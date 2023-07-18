@@ -1,0 +1,3 @@
+[build]
+# TODO: Match codecup machine features.
+rustflags = ["-Ctarget-cpu=native"]

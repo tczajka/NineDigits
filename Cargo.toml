@@ -1,8 +1,7 @@
 [package]
 name = "sudoku-game"
 version = "0.1.0"
-# TODO: Change once codecup updates its configuration.
-edition = "2015"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

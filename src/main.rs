@@ -1,3 +1,5 @@
+use sudoku_game::run_codecup_interaction;
+
 fn main() {
-    println!("Hello, world!");
+    run_codecup_interaction();
 }

@@ -1,3 +1,3 @@
-mod array;
+mod board;
 mod digit;
 mod small;

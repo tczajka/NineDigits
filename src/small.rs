@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 /// A number in range 0..L.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Small<const L: usize>(u8);
@@ -21,6 +23,12 @@ impl<const L: usize> Small<L> {
     pub const unsafe fn new_unchecked(x: u8) -> Self {
         Self(x)
     }
+
+    /// Iterate all.
+    pub fn all() -> impl Iterator<Item = Self> {
+        // Safety: `i` is in range 0..L.
+        (0..u8::try_from(L).unwrap()).map(|i| unsafe { Self::new_unchecked(i) })
+    }
 }
 
 impl<const L: usize> From<Small<L>> for u8 {
@@ -32,5 +40,23 @@ impl<const L: usize> From<Small<L>> for u8 {
 impl<const L: usize> From<Small<L>> for usize {
     fn from(x: Small<L>) -> Self {
         x.0.into()
+    }
+}
+
+impl<T, const N: usize> Index<Small<N>> for [T; N] {
+    type Output = T;
+
+    fn index(&self, index: Small<N>) -> &T {
+        let index = usize::from(index);
+        // SAFETY: `index` is in range 0..N.
+        unsafe { self.get_unchecked(index) }
+    }
+}
+
+impl<T, const N: usize> IndexMut<Small<N>> for [T; N] {
+    fn index_mut(&mut self, index: Small<N>) -> &mut T {
+        let index = usize::from(index);
+        // SAFETY: `index` is in range 0..N.
+        unsafe { self.get_unchecked_mut(index) }
     }
 }

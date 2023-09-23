@@ -1,6 +1,6 @@
 pub use codecup::run_codecup_interaction;
 
-mod array;
+mod board;
 mod codecup;
 mod digit;
 mod platform;

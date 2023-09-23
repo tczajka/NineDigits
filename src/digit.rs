@@ -1,21 +1,11 @@
-use super::small::Small;
+use super::{error::InvalidInput, small::Small};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Digit(Small<9>);
 
-impl Digit {
-    pub fn to_char(self) -> char {
-        char::from(b'1' + u8::from(self.0))
-    }
-
-    pub fn try_from_char(c: char) -> Option<Self> {
-        let val = c as u8;
-        if (b'1'..=b'9').contains(&val) {
-            let val = Small::<9>::new(val - b'1');
-            Some(Self(val))
-        } else {
-            None
-        }
+impl From<Digit> for Small<9> {
+    fn from(digit: Digit) -> Self {
+        digit.0
     }
 }
 
@@ -25,9 +15,23 @@ impl From<Small<9>> for Digit {
     }
 }
 
-impl From<Digit> for Small<9> {
-    fn from(digit: Digit) -> Self {
-        digit.0
+impl From<Digit> for char {
+    fn from(digit: Digit) -> char {
+        char::from(b'1' + u8::from(digit.0))
+    }
+}
+
+impl TryFrom<char> for Digit {
+    type Error = InvalidInput;
+
+    fn try_from(c: char) -> Result<Digit, InvalidInput> {
+        let val = c as u8;
+        if (b'1'..=b'9').contains(&val) {
+            let val = Small::<9>::new(val - b'1');
+            Ok(Self(val))
+        } else {
+            Err(InvalidInput)
+        }
     }
 }
 
@@ -47,22 +51,6 @@ impl OptionalDigit {
             Some(Digit(val))
         }
     }
-
-    pub fn to_char(self) -> char {
-        match self.to_digit() {
-            Some(digit) => digit.to_char(),
-            None => '.',
-        }
-    }
-
-    pub fn try_from_char(c: char) -> Option<Self> {
-        if c == '.' {
-            Some(Self::NONE)
-        } else {
-            let digit = Digit::try_from_char(c)?;
-            Some(digit.into())
-        }
-    }
 }
 
 impl From<Digit> for OptionalDigit {
@@ -71,5 +59,27 @@ impl From<Digit> for OptionalDigit {
         // SAFETY: val < 9 < 10.
         let val = unsafe { Small::<10>::new_unchecked(val) };
         Self(val)
+    }
+}
+
+impl From<OptionalDigit> for char {
+    fn from(digit: OptionalDigit) -> char {
+        match digit.to_digit() {
+            Some(digit) => digit.into(),
+            None => '0',
+        }
+    }
+}
+
+impl TryFrom<char> for OptionalDigit {
+    type Error = InvalidInput;
+
+    fn try_from(c: char) -> Result<Self, InvalidInput> {
+        if c == '0' {
+            Ok(Self::NONE)
+        } else {
+            let digit = Digit::try_from(c)?;
+            Ok(digit.into())
+        }
     }
 }

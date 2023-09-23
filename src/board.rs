@@ -55,7 +55,7 @@ impl Board {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct FullBoard {
+pub struct FilledBoard {
     squares: [Digit; 81],
 }
 
@@ -63,4 +63,11 @@ pub struct FullBoard {
 pub struct Move {
     position: Small<81>,
     digit: Digit,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FullMove {
+    Move(Move),
+    MoveClaimUnique(Move),
+    ClaimUnique,
 }

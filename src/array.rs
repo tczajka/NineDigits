@@ -1,6 +1,7 @@
 use super::small::Small;
 use std::ops::{Index, IndexMut};
 
+#[derive(Clone, Copy, Debug)]
 pub struct Array<T, const N: usize>([T; N]);
 
 impl<T: Copy, const N: usize> Array<T, N> {

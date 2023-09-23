@@ -12,6 +12,15 @@ impl<const L: usize> Small<L> {
         assert!((x as usize) < L);
         Self(x)
     }
+
+    /// Creates a new `Small` from a `u8` without checking.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `x < L`.
+    pub const unsafe fn new_unchecked(x: u8) -> Self {
+        Self(x)
+    }
 }
 
 impl<const L: usize> From<Small<L>> for u8 {

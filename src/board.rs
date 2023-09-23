@@ -1,4 +1,7 @@
-use super::small::Small;
+use super::{
+    digit::{Digit, OptionalDigit},
+    small::Small,
+};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Coordinates {
@@ -36,4 +39,28 @@ impl From<Small<81>> for Coordinates {
             small: [small0, small1],
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Board {
+    squares: [OptionalDigit; 81],
+}
+
+impl Board {
+    pub fn empty() -> Self {
+        Self {
+            squares: [OptionalDigit::NONE; 81],
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FullBoard {
+    squares: [Digit; 81],
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Move {
+    position: Small<81>,
+    digit: Digit,
 }

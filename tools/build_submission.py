@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", required=True, help="output file")
 args = parser.parse_args()
 
-mod_line_re = re.compile(r"mod ([a-z]*);\n")
+mod_line_re = re.compile(r"mod ([a-z_]*);\n")
 
 
 def process(file_name, output_file):

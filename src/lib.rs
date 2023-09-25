@@ -1,6 +1,11 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 
-pub use codecup::run_codecup_interaction;
+pub use {
+    basic_solver::BasicSolver,
+    board::{Board, FilledBoard},
+    codecup::run_codecup_interaction,
+    solver::{Solver, SolverStep},
+};
 
 mod basic_solver;
 mod board;

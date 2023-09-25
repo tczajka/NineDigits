@@ -1,4 +1,7 @@
-use std::fmt::{self, Display, Formatter};
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct InvalidInput;
@@ -8,3 +11,5 @@ impl Display for InvalidInput {
         write!(f, "invalid input")
     }
 }
+
+impl Error for InvalidInput {}

@@ -86,7 +86,7 @@ impl TryFrom<char> for OptionalDigit {
     type Error = InvalidInput;
 
     fn try_from(c: char) -> Result<Self, InvalidInput> {
-        if c == '0' {
+        if c == '0' || c == '.' {
             Ok(Self::NONE)
         } else {
             let digit = Digit::try_from(c)?;

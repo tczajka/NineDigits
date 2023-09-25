@@ -2,6 +2,7 @@ use super::{error::InvalidInput, small::Small};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Digit(Small<9>);
 
 impl From<Digit> for Small<9> {
@@ -44,6 +45,8 @@ impl Display for Digit {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+
 pub struct OptionalDigit(Small<10>);
 
 impl OptionalDigit {

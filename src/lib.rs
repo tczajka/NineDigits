@@ -1,3 +1,5 @@
+#![warn(unsafe_op_in_unsafe_fn)]
+
 pub use codecup::run_codecup_interaction;
 
 mod board;

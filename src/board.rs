@@ -1,3 +1,5 @@
+use std::mem;
+
 use super::{
     digit::{Digit, OptionalDigit},
     small::Small,
@@ -47,9 +49,17 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn empty() -> Self {
-        Self {
-            squares: [OptionalDigit::NONE; 81],
+    pub const EMPTY: Self = Self {
+        squares: [OptionalDigit::NONE; 81],
+    };
+
+    /// # Safety
+    ///
+    /// None of the squares must be `NONE`.
+    pub unsafe fn to_filled(&self) -> FilledBoard {
+        FilledBoard {
+            // Safety: None of the squares are `NONE` and the representation are all `u8`.
+            squares: unsafe { mem::transmute(self.squares) },
         }
     }
 }

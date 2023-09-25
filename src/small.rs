@@ -2,6 +2,8 @@ use std::ops::{Index, IndexMut};
 
 /// A number in range 0..L.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+
 pub struct Small<const L: usize>(u8);
 
 impl<const L: usize> Small<L> {

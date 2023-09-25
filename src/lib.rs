@@ -2,6 +2,7 @@
 
 pub use codecup::run_codecup_interaction;
 
+mod basic_solver;
 mod board;
 mod codecup;
 mod digit;

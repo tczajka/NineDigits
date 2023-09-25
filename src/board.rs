@@ -43,7 +43,7 @@ impl From<Small<81>> for Coordinates {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Board {
     pub squares: [OptionalDigit; 81],
 }
@@ -64,7 +64,7 @@ impl Board {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct FilledBoard {
     pub squares: [Digit; 81],
 }

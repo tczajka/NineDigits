@@ -1,14 +1,31 @@
-use std::mem;
-
 use super::{
     digit::{Digit, OptionalDigit},
+    error::InvalidInput,
     small::Small,
+};
+use std::{
+    fmt::{self, Display, Formatter},
+    mem,
+    str::FromStr,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Coordinates {
     pub big: [Small<3>; 2],
     pub small: [Small<3>; 2],
+}
+
+pub fn row_major_coordinates() -> impl Iterator<Item = Coordinates> {
+    Small::<3>::all().flat_map(|big0| {
+        Small::<3>::all().flat_map(move |small0| {
+            Small::<3>::all().flat_map(move |big1| {
+                Small::<3>::all().map(move |small1| Coordinates {
+                    big: [big0, big1],
+                    small: [small0, small1],
+                })
+            })
+        })
+    })
 }
 
 impl From<Coordinates> for Small<81> {
@@ -64,9 +81,67 @@ impl Board {
     }
 }
 
+impl Display for Board {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for coord in row_major_coordinates() {
+            write!(f, "{}", self.squares[Small::<81>::from(coord)])?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for Board {
+    type Err = InvalidInput;
+
+    fn from_str(s: &str) -> Result<Self, InvalidInput> {
+        let mut squares = [OptionalDigit::NONE; 81];
+        let mut coord_iter = row_major_coordinates();
+        let mut char_iter = s.chars();
+        loop {
+            match (coord_iter.next(), char_iter.next()) {
+                (Some(coord), Some(c)) => {
+                    squares[Small::<81>::from(coord)] = c.try_into()?;
+                }
+                (None, None) => break,
+                _ => return Err(InvalidInput),
+            }
+        }
+        Ok(Self { squares })
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct FilledBoard {
     pub squares: [Digit; 81],
+}
+
+impl Display for FilledBoard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for coord in row_major_coordinates() {
+            write!(f, "{}", self.squares[Small::<81>::from(coord)])?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for FilledBoard {
+    type Err = InvalidInput;
+
+    fn from_str(s: &str) -> Result<Self, InvalidInput> {
+        let mut squares = [Digit::from(Small::new(0)); 81];
+        let mut coord_iter = row_major_coordinates();
+        let mut char_iter = s.chars();
+        loop {
+            match (coord_iter.next(), char_iter.next()) {
+                (Some(coord), Some(c)) => {
+                    squares[Small::<81>::from(coord)] = c.try_into()?;
+                }
+                (None, None) => break,
+                _ => return Err(InvalidInput),
+            }
+        }
+        Ok(Self { squares })
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -9,6 +9,7 @@ mod platform;
 mod player;
 mod small;
 mod solver;
+mod square_set;
 
 #[rustfmt::skip]
 #[cfg(test)] mod tests;

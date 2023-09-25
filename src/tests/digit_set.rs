@@ -7,10 +7,13 @@ fn test_digit_set() {
     assert_eq!(set, DigitSet::EMPTY);
     assert_ne!(set, DigitSet::ALL);
 
-    set.insert(Digit::try_from('3').unwrap());
+    let three = Digit::try_from('3').unwrap();
+    let nine = Digit::try_from('9').unwrap();
+
+    set.insert(three);
     let mut set2 = set;
-    set2.insert(Digit::try_from('9').unwrap());
+    set2.insert(nine);
     assert_ne!(set, set2);
-    set2.remove(Digit::try_from('9').unwrap());
+    set2.remove(nine);
     assert_eq!(set, set2);
 }

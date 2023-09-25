@@ -2,7 +2,6 @@ use super::{digit::Digit, small::Small};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DigitSet(u16);
-// TODO: Unit tests.
 
 impl DigitSet {
     pub const EMPTY: DigitSet = DigitSet(0);

@@ -1,4 +1,5 @@
 use super::{error::InvalidInput, small::Small};
+use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Digit(Small<9>);
@@ -32,6 +33,13 @@ impl TryFrom<char> for Digit {
         } else {
             Err(InvalidInput)
         }
+    }
+}
+
+impl Display for Digit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let c = char::from(*self);
+        write!(f, "{c}")
     }
 }
 
@@ -81,5 +89,12 @@ impl TryFrom<char> for OptionalDigit {
             let digit = Digit::try_from(c)?;
             Ok(digit.into())
         }
+    }
+}
+
+impl Display for OptionalDigit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let c = char::from(*self);
+        write!(f, "{c}")
     }
 }

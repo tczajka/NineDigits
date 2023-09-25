@@ -14,6 +14,7 @@ fn test_digit_set() {
     let mut set2 = set;
     set2.insert(nine);
     assert_ne!(set, set2);
+    assert_eq!(set2.to_string(), "39");
     set2.remove(nine);
     assert_eq!(set, set2);
 }

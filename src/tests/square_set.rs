@@ -13,6 +13,7 @@ fn test_square_set() {
     let mut set2 = set;
     set2.insert(b);
     assert_ne!(set, set2);
+    assert!(set2.into_iter().eq([a, b]));
     set2.remove(b);
     assert_eq!(set, set2);
 }

@@ -1,5 +1,5 @@
 use crate::{
-    board::{Board, Coordinates, FilledBoard},
+    board::{Board, Coordinates, FilledBoard, FullMove, Move},
     error::InvalidInput,
     small::Small,
 };
@@ -12,11 +12,49 @@ fn test_coordinates() {
 }
 
 #[test]
+fn test_move() {
+    let mov: Move = "Bd7".parse().unwrap();
+    let coord = Coordinates::from(mov.position);
+    assert_eq!(coord.big[0], Small::new(0));
+    assert_eq!(coord.small[0], Small::new(1));
+    assert_eq!(coord.big[1], Small::new(1));
+    assert_eq!(coord.small[1], Small::new(0));
+    assert_eq!(Small::from(mov.digit), Small::new(6));
+    assert_eq!(mov.to_string(), "Bd7");
+}
+
+#[test]
+fn test_full_move() {
+    let fmov = "Bd7".parse::<FullMove>().unwrap();
+    assert_eq!(fmov.to_string(), "Bd7");
+
+    let fmov = "Bd7!".parse::<FullMove>().unwrap();
+    assert_eq!(fmov.to_string(), "Bd7!");
+
+    let fmov = "!".parse::<FullMove>().unwrap();
+    assert_eq!(fmov.to_string(), "!");
+
+    assert!("?".parse::<FullMove>().is_err());
+}
+
+#[test]
 fn test_board() {
     let board_str =
         "000000000000000000000000000000000000000000000000000000000000000000000000000001290";
-    let board: Board = board_str.parse().unwrap();
+    let mut board: Board = board_str.parse().unwrap();
     assert_eq!(board.to_string(), board_str);
+
+    assert!(board.empty_squares().contains(Small::new(3)));
+    assert!(!board.empty_squares().contains(Small::new(79)));
+
+    let mov = "Cd7".parse::<Move>().unwrap();
+    board.make_move(mov);
+    assert_eq!(
+        board.to_string(),
+        "000000000000000000000700000000000000000000000000000000000000000000000000000001290"
+    );
+    // Note: box-wise order.
+    assert!(!board.empty_squares().contains(Small::new(15)));
 }
 
 #[test]
@@ -31,6 +69,6 @@ fn test_filled_board() {
 
     let board: Board = board_str.parse().unwrap();
     // Safety: No zeroes in `board_str`.
-    let filled_board = unsafe { board.to_filled() };
+    let filled_board = board.into_filled();
     assert_eq!(filled_board.to_string(), board_str);
 }

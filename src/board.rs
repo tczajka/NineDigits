@@ -2,6 +2,7 @@ use super::{
     digit::{Digit, OptionalDigit},
     error::InvalidInput,
     small::Small,
+    square_set::SquareSet,
 };
 use std::{
     fmt::{self, Display, Formatter},
@@ -62,18 +63,35 @@ impl From<Small<81>> for Coordinates {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Board {
-    pub squares: [OptionalDigit; 81],
+    squares: [OptionalDigit; 81],
+    empty: SquareSet,
 }
 
 impl Board {
     pub const EMPTY: Self = Self {
         squares: [OptionalDigit::NONE; 81],
+        empty: SquareSet::ALL,
     };
 
-    /// # Safety
+    pub fn square(&self, position: Small<81>) -> OptionalDigit {
+        self.squares[position]
+    }
+
+    pub fn empty_squares(&self) -> SquareSet {
+        self.empty
+    }
+
+    pub fn make_move(&mut self, mov: Move) {
+        debug_assert!(self.empty.contains(mov.position));
+        self.squares[mov.position] = mov.digit.into();
+        self.empty.remove(mov.position);
+    }
+
+    /// # Panics
     ///
-    /// None of the squares must be `NONE`.
-    pub unsafe fn to_filled(&self) -> FilledBoard {
+    /// Panics if there are any empty equares.
+    pub fn into_filled(self) -> FilledBoard {
+        assert!(self.empty == SquareSet::EMPTY);
         FilledBoard {
             // Safety: None of the squares are `NONE` and the representation are all `u8`.
             squares: unsafe { mem::transmute(self.squares) },
@@ -95,18 +113,24 @@ impl FromStr for Board {
 
     fn from_str(s: &str) -> Result<Self, InvalidInput> {
         let mut squares = [OptionalDigit::NONE; 81];
+        let mut empty = SquareSet::EMPTY;
         let mut coord_iter = row_major_coordinates();
         let mut char_iter = s.chars();
         loop {
             match (coord_iter.next(), char_iter.next()) {
                 (Some(coord), Some(c)) => {
-                    squares[Small::<81>::from(coord)] = c.try_into()?;
+                    let position = Small::<81>::from(coord);
+                    let odigit = OptionalDigit::try_from(c)?;
+                    squares[position] = odigit;
+                    if odigit == OptionalDigit::NONE {
+                        empty.insert(position);
+                    }
                 }
                 (None, None) => break,
                 _ => return Err(InvalidInput),
             }
         }
-        Ok(Self { squares })
+        Ok(Self { squares, empty })
     }
 }
 
@@ -146,8 +170,58 @@ impl FromStr for FilledBoard {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Move {
-    position: Small<81>,
-    digit: Digit,
+    pub position: Small<81>,
+    pub digit: Digit,
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let coord = Coordinates::from(self.position);
+        let row = char::from(b'A' + 3 * u8::from(coord.big[0]) + u8::from(coord.small[0]));
+        let col = char::from(b'a' + 3 * u8::from(coord.big[1]) + u8::from(coord.small[1]));
+        write!(f, "{}{}{}", row, col, self.digit)
+    }
+}
+
+impl FromStr for Move {
+    type Err = InvalidInput;
+
+    fn from_str(s: &str) -> Result<Self, InvalidInput> {
+        let mut chars = s.chars();
+        let row = chars.next().ok_or(InvalidInput)?;
+        let col = chars.next().ok_or(InvalidInput)?;
+        let digit = chars.next().ok_or(InvalidInput)?;
+        if chars.next().is_some() {
+            return Err(InvalidInput);
+        }
+
+        let row = u8::try_from(row).map_err(|_| InvalidInput)?;
+        if !(b'A'..=b'I').contains(&row) {
+            return Err(InvalidInput);
+        }
+        let row = row - b'A';
+
+        let col = u8::try_from(col).map_err(|_| InvalidInput)?;
+        if !(b'a'..=b'i').contains(&col) {
+            return Err(InvalidInput);
+        }
+        let col = col - b'a';
+
+        let digit = Digit::try_from(digit)?;
+
+        let big0 = Small::new(row / 3);
+        let small0 = Small::new(row % 3);
+        let big1 = Small::new(col / 3);
+        let small1 = Small::new(col % 3);
+        let coord = Coordinates {
+            big: [big0, big1],
+            small: [small0, small1],
+        };
+        Ok(Self {
+            position: coord.into(),
+            digit,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -155,4 +229,26 @@ pub enum FullMove {
     Move(Move),
     MoveClaimUnique(Move),
     ClaimUnique,
+}
+
+impl Display for FullMove {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Move(mov) => write!(f, "{}", mov),
+            Self::MoveClaimUnique(mov) => write!(f, "{}!", mov),
+            Self::ClaimUnique => write!(f, "!"),
+        }
+    }
+}
+
+impl FromStr for FullMove {
+    type Err = InvalidInput;
+
+    fn from_str(s: &str) -> Result<Self, InvalidInput> {
+        match s.strip_suffix('!') {
+            Some("") => Ok(Self::ClaimUnique),
+            Some(s) => Ok(Self::MoveClaimUnique(s.parse()?)),
+            None => Ok(Self::Move(s.parse()?)),
+        }
+    }
 }

@@ -1,6 +1,6 @@
 use super::{
-    board::{Board, Coordinates},
-    digit::{Digit, OptionalDigit},
+    board::{Board, Coordinates, Move},
+    digit::Digit,
     digit_set::DigitSet,
     small::Small,
     solver::{Solver, SolverStep},
@@ -16,7 +16,7 @@ impl Solver for BasicSolver {
     fn new(board: &Board) -> Self {
         let mut state = SearchState::new();
         for sq_idx in Small::<81>::all() {
-            if let Some(digit) = board.squares[sq_idx].to_digit() {
+            if let Some(digit) = board.square(sq_idx).to_digit() {
                 state.place_digit(sq_idx, digit);
             }
         }
@@ -26,11 +26,13 @@ impl Solver for BasicSolver {
     }
 
     fn step(&mut self) -> SolverStep {
-        let Some(mut state) = self.remaining.pop() else { return SolverStep::Done; };
+        let Some(mut state) = self.remaining.pop() else {
+            return SolverStep::Done;
+        };
 
-        while state.to_solve != SquareSet::EMPTY {
+        while state.board.empty_squares() != SquareSet::EMPTY {
             let mut progress = false;
-            for sq_idx in state.to_solve {
+            for sq_idx in state.board.empty_squares() {
                 let possibilities = state.possibilities(sq_idx);
                 let num = possibilities.size();
                 match num {
@@ -48,7 +50,7 @@ impl Solver for BasicSolver {
                 continue;
             }
 
-            let mut sq_iter = state.to_solve.into_iter();
+            let mut sq_iter = state.board.empty_squares().into_iter();
             let mut branch_sq_idx = sq_iter.next().unwrap();
             let mut branch_possibilities = state.possibilities(branch_sq_idx);
             let mut num_branch_possibilities = branch_possibilities.size();
@@ -75,14 +77,13 @@ impl Solver for BasicSolver {
         }
 
         // Safety: `state` is fully solved.
-        SolverStep::Found(unsafe { state.solved.to_filled() })
+        SolverStep::Found(state.board.into_filled())
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 struct SearchState {
-    solved: Board,
-    to_solve: SquareSet,
+    board: Board,
     line_possibilities: [[[DigitSet; 3]; 3]; 2],
     box_possibilities: [[DigitSet; 3]; 3],
 }
@@ -90,17 +91,17 @@ struct SearchState {
 impl SearchState {
     fn new() -> Self {
         SearchState {
-            solved: Board::EMPTY,
-            to_solve: SquareSet::ALL,
+            board: Board::EMPTY,
             line_possibilities: [[[DigitSet::ALL; 3]; 3]; 2],
             box_possibilities: [[DigitSet::ALL; 3]; 3],
         }
     }
 
     fn place_digit(&mut self, sq_idx: Small<81>, digit: Digit) {
-        debug_assert!(self.solved.squares[sq_idx] == OptionalDigit::NONE);
-        self.solved.squares[sq_idx] = digit.into();
-        self.to_solve.remove(sq_idx);
+        self.board.make_move(Move {
+            position: sq_idx,
+            digit,
+        });
         let coord = Coordinates::from(sq_idx);
         self.line_possibilities[0][coord.big[0]][coord.small[0]].remove(digit);
         self.line_possibilities[1][coord.big[1]][coord.small[1]].remove(digit);

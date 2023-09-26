@@ -27,7 +27,7 @@ impl TryFrom<char> for Digit {
     type Error = InvalidInput;
 
     fn try_from(c: char) -> Result<Digit, InvalidInput> {
-        let val = c as u8;
+        let val = u8::try_from(c).map_err(|_| InvalidInput)?;
         if (b'1'..=b'9').contains(&val) {
             let val = Small::<9>::new(val - b'1');
             Ok(Self(val))

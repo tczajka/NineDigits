@@ -1,5 +1,6 @@
-use crate::{log, platform::platform_description};
+use crate::{log, platform::platform_description, random::RandomGenerator};
 
 pub fn run_codecup_interaction() {
     log::write_line!(Info, "platform: {}", platform_description());
+    let mut rng = RandomGenerator::with_time_nonce();
 }

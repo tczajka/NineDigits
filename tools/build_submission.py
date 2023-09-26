@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", required=True, help="output file")
 args = parser.parse_args()
 
-use_sudoku_game_re = re.compile(r"use sudoku_game::.*;\n")
+skip_line_re = re.compile(r".*// submission::skip\n")
 mod_line_re = re.compile(r"((pub )?)mod ([a-z_]*);\n")
 
 
@@ -18,7 +18,7 @@ def process(file_name, output_file):
 
     with open(f"src/{file_name}") as f:
         for line in f:
-            if use_sudoku_game_re.fullmatch(line) is not None:
+            if skip_line_re.fullmatch(line) is not None:
                 continue
             m = mod_line_re.fullmatch(line)
             if m is not None:

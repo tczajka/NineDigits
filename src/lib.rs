@@ -22,5 +22,4 @@ mod small;
 mod solver;
 mod square_set;
 
-#[rustfmt::skip]
-#[cfg(test)] mod tests;
+#[rustfmt::skip] #[cfg(test)] mod tests; // submission::skip

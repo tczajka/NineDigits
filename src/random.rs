@@ -1,4 +1,4 @@
-use crate::chacha::chacha20_block;
+use crate::{chacha::chacha20_block, log};
 use std::time::SystemTime;
 
 #[derive(Debug)]
@@ -39,6 +39,7 @@ impl RandomGenerator {
             .elapsed()
             .unwrap_or_default()
             .as_nanos() as u64;
+        log::write_line!(Info, "RandomGenerator nonce {nonce}");
         Self::with_nonce(nonce)
     }
 

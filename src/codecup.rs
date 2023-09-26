@@ -1,5 +1,5 @@
-use super::platform::platform_description;
+use crate::{log, platform::platform_description};
 
 pub fn run_codecup_interaction() {
-    eprintln!("platform: {}", platform_description());
+    log::write_line!(Info, "platform: {}", platform_description());
 }

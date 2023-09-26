@@ -14,6 +14,7 @@ mod codecup;
 mod digit;
 mod digit_set;
 mod error;
+pub mod log;
 mod platform;
 mod player;
 mod random;

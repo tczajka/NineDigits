@@ -1,4 +1,4 @@
-use super::{digit::Digit, error::InvalidInput, small::Small};
+use crate::{digit::Digit, error::InvalidInput, small::Small};
 use std::{
     fmt::{self, Display, Formatter},
     ops::BitAnd,

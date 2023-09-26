@@ -1,4 +1,4 @@
-use super::{
+use crate::{
     digit::{Digit, OptionalDigit},
     error::InvalidInput,
     small::Small,

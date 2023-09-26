@@ -1,4 +1,4 @@
-use super::small::Small;
+use crate::small::Small;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SquareSet(u128);

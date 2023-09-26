@@ -1,4 +1,4 @@
-use super::chacha::chacha20_block;
+use crate::chacha::chacha20_block;
 use std::time::SystemTime;
 
 #[derive(Debug)]

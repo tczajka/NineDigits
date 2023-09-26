@@ -9,7 +9,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", required=True, help="output file")
 args = parser.parse_args()
 
-mod_line_re = re.compile(r"mod ([a-z_]*);\n")
+use_sudoku_game_re = re.compile(r"use sudoku_game::.*;\n")
+mod_line_re = re.compile(r"((pub )?)mod ([a-z_]*);\n")
 
 
 def process(file_name, output_file):
@@ -17,20 +18,23 @@ def process(file_name, output_file):
 
     with open(f"src/{file_name}") as f:
         for line in f:
+            if use_sudoku_game_re.fullmatch(line) is not None:
+                continue
             m = mod_line_re.fullmatch(line)
             if m is not None:
-                mod = m.group(1)
-                process_mod(mod, mod + ".rs", output_file)
+                prefix = m.group(1)
+                mod = m.group(3)
+                process_mod(prefix, mod, mod + ".rs", output_file)
             else:
                 output_file.write(line)
 
 
-def process_mod(mod_name, file_name, output_file):
-    output_file.write(f"mod {mod_name} {{\n")
+def process_mod(prefix, mod_name, file_name, output_file):
+    output_file.write(f"{prefix} mod {mod_name} {{\n")
     process(file_name, output_file)
     output_file.write(f"}} // mod {mod_name}\n")
 
 
 with open(args.output, "w") as output_file:
+    process("lib.rs", output_file)
     process("main.rs", output_file)
-    process_mod("sudoku_game", "lib.rs", output_file)

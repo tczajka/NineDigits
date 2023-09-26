@@ -1,4 +1,4 @@
-use super::board::{Board, FilledBoard};
+use crate::board::{Board, FilledBoard};
 
 pub trait Solver {
     fn new(board: &Board) -> Self;

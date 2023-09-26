@@ -1,4 +1,4 @@
-use super::{
+use crate::{
     board::{Board, Coordinates, Move},
     digit::Digit,
     digit_set::DigitSet,

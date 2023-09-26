@@ -1,4 +1,4 @@
-use super::{error::InvalidInput, small::Small};
+use crate::{error::InvalidInput, small::Small};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

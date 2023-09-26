@@ -16,6 +16,7 @@ mod digit_set;
 mod error;
 mod platform;
 mod player;
+mod random;
 mod small;
 mod solver;
 mod square_set;

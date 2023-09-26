@@ -14,7 +14,7 @@ fn test_coordinates() {
 #[test]
 fn test_move() {
     let mov: Move = "Bd7".parse().unwrap();
-    let coord = Coordinates::from(mov.position);
+    let coord = Coordinates::from(mov.square);
     assert_eq!(coord.big[0], Small::new(0));
     assert_eq!(coord.small[0], Small::new(1));
     assert_eq!(coord.big[1], Small::new(1));

@@ -82,9 +82,9 @@ impl Board {
     }
 
     pub fn make_move(&mut self, mov: Move) {
-        debug_assert!(self.empty.contains(mov.position));
-        self.squares[mov.position] = mov.digit.into();
-        self.empty.remove(mov.position);
+        debug_assert!(self.empty.contains(mov.square));
+        self.squares[mov.square] = mov.digit.into();
+        self.empty.remove(mov.square);
     }
 
     /// # Panics
@@ -170,13 +170,13 @@ impl FromStr for FilledBoard {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Move {
-    pub position: Small<81>,
+    pub square: Small<81>,
     pub digit: Digit,
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let coord = Coordinates::from(self.position);
+        let coord = Coordinates::from(self.square);
         let row = char::from(b'A' + 3 * u8::from(coord.big[0]) + u8::from(coord.small[0]));
         let col = char::from(b'a' + 3 * u8::from(coord.big[1]) + u8::from(coord.small[1]));
         write!(f, "{}{}{}", row, col, self.digit)
@@ -218,7 +218,7 @@ impl FromStr for Move {
             small: [small0, small1],
         };
         Ok(Self {
-            position: coord.into(),
+            square: coord.into(),
             digit,
         })
     }

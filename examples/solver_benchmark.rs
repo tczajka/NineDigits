@@ -7,7 +7,11 @@ use std::{
     path::{Path, PathBuf},
     time::Instant,
 };
-use sudoku_game::{BasicSolver, Board, Solver, SolverStep};
+use sudoku_game::{
+    basic_solver::BasicSolver,
+    board::Board,
+    solver::{Solver, SolverStep},
+};
 
 #[derive(Debug, Parser)]
 struct Args {

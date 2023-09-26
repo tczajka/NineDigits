@@ -1,7 +1,7 @@
 use std::{
     fmt,
     io::{BufWriter, Stderr, Write},
-    sync::{Mutex, Once},
+    sync::Mutex,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

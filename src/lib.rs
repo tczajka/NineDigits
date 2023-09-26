@@ -1,25 +1,18 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 
-pub use {
-    basic_solver::BasicSolver,
-    board::{Board, FilledBoard},
-    codecup::run_codecup_interaction,
-    solver::{Solver, SolverStep},
-};
-
-mod basic_solver;
-mod board;
-mod chacha;
-mod codecup;
-mod digit;
-mod digit_set;
-mod error;
+pub mod basic_solver;
+pub mod board;
+pub mod chacha;
+pub mod codecup;
+pub mod digit;
+pub mod digit_set;
+pub mod error;
 pub mod log;
-mod platform;
-mod player;
-mod random;
-mod small;
-mod solver;
-mod square_set;
+pub mod platform;
+pub mod player;
+pub mod random;
+pub mod small;
+pub mod solver;
+pub mod square_set;
 
 #[rustfmt::skip] #[cfg(test)] mod tests; // submission::skip

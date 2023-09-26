@@ -1,6 +1,6 @@
-use sudoku_game::{log, run_codecup_interaction}; // submission::skip
+use sudoku_game::{codecup, log}; // submission::skip
 
 fn main() {
     log::init(log::Level::Info);
-    run_codecup_interaction();
+    codecup::run_codecup_interaction();
 }

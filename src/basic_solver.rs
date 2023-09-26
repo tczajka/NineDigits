@@ -1,6 +1,5 @@
 use crate::{
     board::{Board, Coordinates, Move},
-    digit::Digit,
     digit_set::DigitSet,
     small::Small,
     solver::{Solver, SolverStep},
@@ -15,9 +14,9 @@ pub struct BasicSolver {
 impl Solver for BasicSolver {
     fn new(board: &Board) -> Self {
         let mut state = SearchState::new();
-        for sq_idx in Small::<81>::all() {
-            if let Some(digit) = board.square(sq_idx).to_digit() {
-                state.place_digit(sq_idx, digit);
+        for square in Small::<81>::all() {
+            if let Some(digit) = board.square(square).to_digit() {
+                state.make_move(Move { square, digit });
             }
         }
         Self {
@@ -32,14 +31,14 @@ impl Solver for BasicSolver {
 
         while state.board.empty_squares() != SquareSet::EMPTY {
             let mut progress = false;
-            for sq_idx in state.board.empty_squares() {
-                let possibilities = state.possibilities(sq_idx);
+            for square in state.board.empty_squares() {
+                let possibilities = state.possibilities(square);
                 let num = possibilities.size();
                 match num {
                     0 => return SolverStep::NoProgress,
                     1 => {
                         let digit = possibilities.smallest().unwrap();
-                        state.place_digit(sq_idx, digit);
+                        state.make_move(Move { square, digit });
                         progress = true;
                     }
                     _ => {}
@@ -70,7 +69,10 @@ impl Solver for BasicSolver {
 
             for digit in branch_possibilities {
                 let mut branch_state = state;
-                branch_state.place_digit(branch_sq_idx, digit);
+                branch_state.make_move(Move {
+                    square: branch_sq_idx,
+                    digit,
+                });
                 self.remaining.push(branch_state);
             }
             state = self.remaining.pop().unwrap();
@@ -97,15 +99,12 @@ impl SearchState {
         }
     }
 
-    fn place_digit(&mut self, sq_idx: Small<81>, digit: Digit) {
-        self.board.make_move(Move {
-            position: sq_idx,
-            digit,
-        });
-        let coord = Coordinates::from(sq_idx);
-        self.line_possibilities[0][coord.big[0]][coord.small[0]].remove(digit);
-        self.line_possibilities[1][coord.big[1]][coord.small[1]].remove(digit);
-        self.box_possibilities[coord.big[0]][coord.big[1]].remove(digit);
+    fn make_move(&mut self, mov: Move) {
+        self.board.make_move(mov);
+        let coord = Coordinates::from(mov.square);
+        self.line_possibilities[0][coord.big[0]][coord.small[0]].remove(mov.digit);
+        self.line_possibilities[1][coord.big[1]][coord.small[1]].remove(mov.digit);
+        self.box_possibilities[coord.big[0]][coord.big[1]].remove(mov.digit);
     }
 
     fn possibilities(&self, sq_idx: Small<81>) -> DigitSet {

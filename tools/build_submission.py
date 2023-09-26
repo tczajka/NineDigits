@@ -30,7 +30,7 @@ def process(file_name, output_file):
 
 
 def process_mod(prefix, mod_name, file_name, output_file):
-    output_file.write(f"{prefix} mod {mod_name} {{\n")
+    output_file.write(f"{prefix}mod {mod_name} {{\n")
     process(file_name, output_file)
     output_file.write(f"}} // mod {mod_name}\n")
 

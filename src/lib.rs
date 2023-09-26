@@ -9,6 +9,7 @@ pub use {
 
 mod basic_solver;
 mod board;
+mod chacha;
 mod codecup;
 mod digit;
 mod digit_set;

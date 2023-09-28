@@ -11,7 +11,7 @@ pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
 
     let mut x = input;
 
-    for _ in 0..20 {
+    for _ in 0..10 {
         quarter_round(&mut x);
 
         x[1] = x[1].rotate_words_3();

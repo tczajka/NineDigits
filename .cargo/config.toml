@@ -1,3 +1,2 @@
 [build]
-# TODO: Match codecup machine features.
-rustflags = ["-Ctarget-cpu=native", "-Ctarget-feature=+sse4.2,+avx,+popcnt,+pclmulqdq"]
+rustflags = ["-Ctarget-cpu=x86-64", "-Ctarget-feature=+sse4.2,+avx,+popcnt,+pclmulqdq"]

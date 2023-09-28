@@ -1,54 +1,54 @@
+use crate::simd::Simd4x32;
+
 pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
-    let magic = [*b"expa", *b"nd 3", *b"2-by", *b"te k"].map(u32::from_le_bytes);
-    let mut input = [0; 16];
-    input[0..4].copy_from_slice(&magic);
-    input[4..12].copy_from_slice(key);
-    input[12] = counter as u32;
-    input[13] = (counter >> 32) as u32;
-    input[14] = nonce as u32;
-    input[15] = (nonce >> 32) as u32;
+    let input: [Simd4x32; 4] = [
+        // Magic constant.
+        Simd4x32::from_le_bytes(*b"expand 32-byte k"),
+        <[u32; 4]>::try_from(&key[0..4]).unwrap().into(),
+        <[u32; 4]>::try_from(&key[4..8]).unwrap().into(),
+        Simd4x32::from_le_u64([counter, nonce]),
+    ];
 
     let mut x = input;
-    for _ in 0..10 {
-        for (a, b, c, d) in [
-            (0, 4, 8, 12),
-            (1, 5, 9, 13),
-            (2, 6, 10, 14),
-            (3, 7, 11, 15),
-            (0, 5, 10, 15),
-            (1, 6, 11, 12),
-            (2, 7, 8, 13),
-            (3, 4, 9, 14),
-        ] {
-            let (xa, xb, xc, xd) = quarter_round(x[a], x[b], x[c], x[d]);
-            x[a] = xa;
-            x[b] = xb;
-            x[c] = xc;
-            x[d] = xd;
-        }
+
+    for _ in 0..20 {
+        quarter_round(&mut x);
+
+        x[1] = x[1].rotate_words_1();
+        x[2] = x[2].rotate_words_2();
+        x[3] = x[3].rotate_words_3();
+
+        quarter_round(&mut x);
+
+        x[1] = x[1].rotate_words_3();
+        x[2] = x[2].rotate_words_2();
+        x[3] = x[3].rotate_words_1();
     }
+
+    // Add the input to the output.
     for (a, b) in x.iter_mut().zip(input.iter()) {
-        *a = a.wrapping_add(*b);
+        *a += *b;
     }
-    x
+
+    // Build the result.
+    let mut output = [0; 16];
+    for (a, b) in output.chunks_exact_mut(4).zip(x.iter()) {
+        a.copy_from_slice(&<[u32; 4]>::from(*b))
+    }
+
+    output
 }
 
-fn quarter_round(mut a: u32, mut b: u32, mut c: u32, mut d: u32) -> (u32, u32, u32, u32) {
-    a = a.wrapping_add(b);
-    d ^= a;
-    d = d.rotate_left(16);
+fn quarter_round(x: &mut [Simd4x32; 4]) {
+    x[0] += x[1];
+    x[3] = (x[3] ^ x[0]).rotate_bits_16();
 
-    c = c.wrapping_add(d);
-    b ^= c;
-    b = b.rotate_left(12);
+    x[2] += x[3];
+    x[1] = (x[1] ^ x[2]).rotate_bits_12();
 
-    a = a.wrapping_add(b);
-    d ^= a;
-    d = d.rotate_left(8);
+    x[0] += x[1];
+    x[3] = (x[3] ^ x[0]).rotate_bits_8();
 
-    c = c.wrapping_add(d);
-    b ^= c;
-    b = b.rotate_left(7);
-
-    (a, b, c, d)
+    x[2] += x[3];
+    x[1] = (x[1] ^ x[2]).rotate_bits_7();
 }

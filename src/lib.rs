@@ -11,6 +11,12 @@ pub mod log;
 pub mod platform;
 pub mod player;
 pub mod random;
+#[cfg(all(
+    target_arch = "x86_64",
+    target_feature = "sse2",
+    target_feature = "ssse3"
+))]
+pub mod simd;
 pub mod small;
 pub mod solver;
 pub mod square_set;

@@ -14,15 +14,15 @@ pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
     for _ in 0..20 {
         quarter_round(&mut x);
 
-        x[1] = x[1].rotate_words_1();
-        x[2] = x[2].rotate_words_2();
-        x[3] = x[3].rotate_words_3();
-
-        quarter_round(&mut x);
-
         x[1] = x[1].rotate_words_3();
         x[2] = x[2].rotate_words_2();
         x[3] = x[3].rotate_words_1();
+
+        quarter_round(&mut x);
+
+        x[1] = x[1].rotate_words_1();
+        x[2] = x[2].rotate_words_2();
+        x[3] = x[3].rotate_words_3();
     }
 
     // Add the input to the output.

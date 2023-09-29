@@ -12,3 +12,10 @@ impl From<[[DigitSet; 4]; 4]> for DigitBox {
         Self(Simd4x4x16::from(x))
     }
 }
+
+impl From<DigitBox> for [[DigitSet; 4]; 4] {
+    fn from(x: DigitBox) -> Self {
+        let x: [[u16; 4]; 4] = x.0.into();
+        unsafe { mem::transmute(x) }
+    }
+}

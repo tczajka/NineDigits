@@ -14,7 +14,8 @@ pub mod random;
 #[cfg(all(
     target_arch = "x86_64",
     target_feature = "sse2",
-    target_feature = "ssse3"
+    target_feature = "ssse3",
+    target_feature = "sse4.1",
 ))]
 pub mod simd;
 pub mod small;

@@ -1,4 +1,10 @@
-use sudoku_game::simd::Simd4x32;
+use sudoku_game::simd::{Simd4x32, Simd4x4x16};
+
+#[test]
+fn test_simd4x32_array() {
+    let arr: [u32; 4] = [1, 2, 3, 4];
+    assert_eq!(<[u32; 4]>::from(Simd4x32::from(arr)), arr);
+}
 
 #[test]
 fn test_simd4x32_is_all_zero() {
@@ -79,4 +85,15 @@ fn test_simd4x32_xor() {
     let mut a = x;
     a ^= y;
     assert_eq!(a, z);
+}
+
+#[test]
+fn test_simd4x4x16_array() {
+    let arr: [[u16; 4]; 4] = [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12],
+        [13, 14, 15, 16],
+    ];
+    assert_eq!(<[[u16; 4]; 4]>::from(Simd4x4x16::from(arr)), arr);
 }

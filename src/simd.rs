@@ -156,3 +156,10 @@ impl From<[[u16; 4]; 4]> for Simd4x4x16 {
         Self([Simd8x16::from(x[0]), Simd8x16::from(x[1])])
     }
 }
+
+impl From<Simd4x4x16> for [[u16; 4]; 4] {
+    fn from(x: Simd4x4x16) -> Self {
+        let x: [[u16; 8]; 2] = [x.0[0].into(), x.0[1].into()];
+        unsafe { mem::transmute(x) }
+    }
+}

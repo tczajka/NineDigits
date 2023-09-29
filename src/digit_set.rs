@@ -6,6 +6,7 @@ use std::{
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct DigitSet(u16);
 
 impl DigitSet {

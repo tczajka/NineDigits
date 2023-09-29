@@ -5,6 +5,7 @@ pub mod board;
 pub mod chacha;
 pub mod codecup;
 pub mod digit;
+pub mod digit_box;
 pub mod digit_set;
 pub mod error;
 pub mod log;

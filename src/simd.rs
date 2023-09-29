@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, BitXor, BitXorAssign};
+use std::{
+    mem,
+    ops::{Add, AddAssign, BitXor, BitXorAssign},
+};
 
 #[rustfmt::skip]
 use std::arch::x86_64::{
@@ -141,5 +144,15 @@ impl Add for Simd4x32 {
 impl AddAssign for Simd4x32 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Simd4x4x16([Simd8x16; 2]);
+
+impl From<[[u16; 4]; 4]> for Simd4x4x16 {
+    fn from(x: [[u16; 4]; 4]) -> Self {
+        let x: [[u16; 8]; 2] = unsafe { mem::transmute(x) };
+        Self([Simd8x16::from(x[0]), Simd8x16::from(x[1])])
     }
 }

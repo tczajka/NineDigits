@@ -11,6 +11,7 @@ pub mod error;
 pub mod log;
 pub mod platform;
 pub mod player;
+pub mod queue;
 pub mod random;
 #[cfg(all(
     target_arch = "x86_64",

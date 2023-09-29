@@ -11,9 +11,9 @@ fn test_random_generator() {
         let max_error = 4.0 * (num_iters as f64 * variance).sqrt();
         let mut total: u64 = 0;
         for _ in 0..num_iters {
-            let a = rng.uniform(n);
+            let a = rng.uniform_u64(n);
             assert!((0..n).contains(&a));
-            total += u64::from(a);
+            total += a;
         }
         assert!((total as f64 - num_iters as f64 * mean).abs() < max_error);
     }

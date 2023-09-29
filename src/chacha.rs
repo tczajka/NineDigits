@@ -1,11 +1,11 @@
 use crate::simd::{Simd16x8, Simd2x64, Simd4x32};
 
-pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
+pub fn chacha20_block(key: &[u8; 32], nonce: u64, counter: u64) -> [u8; 64] {
     let input: [Simd4x32; 4] = [
         // Magic constant.
         Simd16x8::from(*b"expand 32-byte k").into(),
-        <[u32; 4]>::try_from(&key[0..4]).unwrap().into(),
-        <[u32; 4]>::try_from(&key[4..8]).unwrap().into(),
+        Simd16x8::from(<[u8; 16]>::try_from(&key[0..16]).unwrap()).into(),
+        Simd16x8::from(<[u8; 16]>::try_from(&key[16..32]).unwrap()).into(),
         Simd2x64::from([counter, nonce]).into(),
     ];
 
@@ -31,9 +31,9 @@ pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
     }
 
     // Build the result.
-    let mut output = [0; 16];
-    for (a, b) in output.chunks_exact_mut(4).zip(x.iter()) {
-        a.copy_from_slice(&<[u32; 4]>::from(*b))
+    let mut output = [0u8; 64];
+    for (a, b) in output.chunks_exact_mut(16).zip(x.iter()) {
+        a.copy_from_slice(&<[u8; 16]>::from(Simd16x8::from(*b)))
     }
 
     output

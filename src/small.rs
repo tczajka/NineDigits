@@ -1,5 +1,7 @@
 use std::ops::{Index, IndexMut};
 
+use crate::random::RandomGenerator;
+
 /// A number in range 0..L.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
@@ -24,6 +26,12 @@ impl<const L: usize> Small<L> {
     /// The caller must ensure that `x < L`.
     pub const unsafe fn new_unchecked(x: u8) -> Self {
         Self(x)
+    }
+
+    /// A random `Small`.
+    pub fn new_random(rng: &mut RandomGenerator) -> Self {
+        assert!(L < 256);
+        Self(rng.uniform_u8(L as u8))
     }
 
     /// Iterate all.

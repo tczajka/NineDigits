@@ -1,12 +1,12 @@
-use crate::simd::Simd4x32;
+use crate::simd::{Simd16x8, Simd2x64, Simd4x32};
 
 pub fn chacha20_block(key: &[u32; 8], nonce: u64, counter: u64) -> [u32; 16] {
     let input: [Simd4x32; 4] = [
         // Magic constant.
-        Simd4x32::from_le_bytes(*b"expand 32-byte k"),
+        Simd16x8::from(*b"expand 32-byte k").into(),
         <[u32; 4]>::try_from(&key[0..4]).unwrap().into(),
         <[u32; 4]>::try_from(&key[4..8]).unwrap().into(),
-        Simd4x32::from_le_u64([counter, nonce]),
+        Simd2x64::from([counter, nonce]).into(),
     ];
 
     let mut x = input;

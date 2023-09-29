@@ -1,4 +1,4 @@
-use crate::random::RandomGenerator;
+use sudoku_game::random::RandomGenerator;
 
 #[test]
 fn test_random_generator() {

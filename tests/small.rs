@@ -1,4 +1,4 @@
-use crate::small::Small;
+use sudoku_game::small::Small;
 
 #[test]
 fn test_small() {

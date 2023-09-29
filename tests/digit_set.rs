@@ -1,5 +1,4 @@
-use crate::digit::Digit;
-use crate::digit_set::DigitSet;
+use sudoku_game::{digit::Digit, digit_set::DigitSet};
 
 #[test]
 fn test_digit_set() {

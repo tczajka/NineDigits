@@ -20,5 +20,3 @@ pub mod simd;
 pub mod small;
 pub mod solver;
 pub mod square_set;
-
-#[rustfmt::skip] #[cfg(test)] mod tests; // submission::skip

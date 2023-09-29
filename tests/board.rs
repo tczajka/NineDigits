@@ -1,4 +1,4 @@
-use crate::{
+use sudoku_game::{
     board::{Board, Coordinates, FilledBoard, FullMove, Move},
     error::InvalidInput,
     small::Small,

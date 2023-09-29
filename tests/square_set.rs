@@ -1,4 +1,4 @@
-use crate::{small::Small, square_set::SquareSet};
+use sudoku_game::{small::Small, square_set::SquareSet};
 
 #[test]
 fn test_square_set() {

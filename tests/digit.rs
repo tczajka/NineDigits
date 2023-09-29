@@ -1,4 +1,4 @@
-use crate::{
+use sudoku_game::{
     digit::{Digit, OptionalDigit},
     error::InvalidInput,
     small::Small,

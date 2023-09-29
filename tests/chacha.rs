@@ -1,4 +1,4 @@
-use crate::chacha::chacha20_block;
+use sudoku_game::chacha::chacha20_block;
 
 #[test]
 fn test_chacha20() {

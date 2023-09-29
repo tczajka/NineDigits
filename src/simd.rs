@@ -14,12 +14,20 @@ use std::arch::x86_64::{
     _mm_xor_si128,
     // SSSE3
     _mm_shuffle_epi8,
+    // SSE4.1
+    _mm_test_all_zeros,
 };
 
 macro_rules! define_simd_128 {
     ($simd:ident = [$elem:ident; $n:literal]) => {
         #[derive(Copy, Clone, Debug)]
         pub struct $simd(__m128i);
+
+        impl $simd {
+            pub fn is_all_zero(self) -> bool {
+                unsafe { _mm_test_all_zeros(self.0, self.0) != 0 }
+            }
+        }
 
         impl From<[$elem; $n]> for $simd {
             fn from(x: [$elem; $n]) -> Self {
@@ -36,6 +44,14 @@ macro_rules! define_simd_128 {
                 output
             }
         }
+
+        impl PartialEq for $simd {
+            fn eq(&self, rhs: &Self) -> bool {
+                (*self ^ *rhs).is_all_zero()
+            }
+        }
+
+        impl Eq for $simd {}
 
         impl BitXor for $simd {
             type Output = Self;

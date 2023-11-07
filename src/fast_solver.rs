@@ -1,5 +1,6 @@
 use crate::{
     board::Board,
+    digit_box::DigitBox,
     solver::{Solver, SolverStep},
 };
 

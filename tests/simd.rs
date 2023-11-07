@@ -1,4 +1,4 @@
-use sudoku_game::simd::{Simd4x32, Simd4x4x16};
+use sudoku_game::{simd::Simd4x32, simd256::Simd4x4x16};
 
 #[test]
 fn test_simd4x32_array() {
@@ -96,4 +96,53 @@ fn test_simd4x4x16_array() {
         [13, 14, 15, 16],
     ];
     assert_eq!(<[[u16; 4]; 4]>::from(Simd4x4x16::from(arr)), arr);
+}
+
+#[test]
+fn test_simd4x4x16_eq() {
+    let a = Simd4x4x16::from([
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12],
+        [13, 14, 15, 16],
+    ]);
+
+    let b = Simd4x4x16::from([
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12],
+        [13, 14, 15, 17],
+    ]);
+
+    assert_eq!(a, a);
+    assert_ne!(a, b);
+}
+
+#[test]
+fn test_simd4x4x16_xor() {
+    let a = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+    ]);
+
+    let b = Simd4x4x16::from([
+        [0x00, 0x00, 0x00, 0x00],
+        [0x0f, 0x0f, 0x0f, 0x0f],
+        [0xf0, 0xf0, 0xf0, 0xf0],
+        [0xff, 0xff, 0xff, 0xff],
+    ]);
+
+    let expected = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x0f, 0x00, 0xff, 0xf0],
+        [0xf0, 0xff, 0x00, 0x0f],
+        [0xff, 0xf0, 0x0f, 0x00],
+    ]);
+
+    assert_eq!(a ^ b, expected);
+    let mut x = a;
+    x ^= b;
+    assert_eq!(x, expected);
 }

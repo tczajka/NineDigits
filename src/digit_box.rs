@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{digit_set::DigitSet, simd::Simd4x4x16};
+use crate::{digit_set::DigitSet, simd256::Simd4x4x16};
 
 /// 4x4 box of `DigitSet`s.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

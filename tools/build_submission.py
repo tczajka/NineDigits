@@ -10,7 +10,7 @@ parser.add_argument("-o", "--output", required=True, help="output file")
 args = parser.parse_args()
 
 skip_line_re = re.compile(r".*// submission::skip\n")
-mod_line_re = re.compile(r"((pub )?)mod ([a-z_]*);\n")
+mod_line_re = re.compile(r"((pub )?)mod ([a-z0-9_]*);\n")
 
 
 def process(file_name, output_file):

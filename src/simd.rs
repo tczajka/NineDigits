@@ -1,8 +1,15 @@
+#[cfg(not(all(
+    target_arch = "x86_64",
+    target_feature = "sse2",
+    target_feature = "ssse3",
+    target_feature = "sse4.1",
+)))]
+compile_error!("simd module requires SSE4.1");
+
 use std::{
     mem,
     ops::{Add, AddAssign, BitXor, BitXorAssign},
 };
-
 #[rustfmt::skip]
 use std::arch::x86_64::{
     __m128i,
@@ -34,14 +41,14 @@ macro_rules! define_simd_128 {
 
         impl From<[$elem; $n]> for $simd {
             fn from(x: [$elem; $n]) -> Self {
-                assert!(std::mem::size_of::<[$elem; $n]>() == 16);
+                assert!(mem::size_of::<[$elem; $n]>() == 16);
                 Self(unsafe { _mm_loadu_si128(x.as_ptr() as *const __m128i) })
             }
         }
 
         impl From<$simd> for [$elem; $n] {
             fn from(x: $simd) -> Self {
-                assert!(std::mem::size_of::<[$elem; $n]>() == 16);
+                assert!(mem::size_of::<[$elem; $n]>() == 16);
                 let mut output = [0; $n];
                 unsafe { _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, x.0) };
                 output
@@ -144,22 +151,5 @@ impl Add for Simd4x32 {
 impl AddAssign for Simd4x32 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Simd4x4x16([Simd8x16; 2]);
-
-impl From<[[u16; 4]; 4]> for Simd4x4x16 {
-    fn from(x: [[u16; 4]; 4]) -> Self {
-        let x: [[u16; 8]; 2] = unsafe { mem::transmute(x) };
-        Self([Simd8x16::from(x[0]), Simd8x16::from(x[1])])
-    }
-}
-
-impl From<Simd4x4x16> for [[u16; 4]; 4] {
-    fn from(x: Simd4x4x16) -> Self {
-        let x: [[u16; 8]; 2] = [x.0[0].into(), x.0[1].into()];
-        unsafe { mem::transmute(x) }
     }
 }

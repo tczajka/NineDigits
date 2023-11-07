@@ -22,6 +22,10 @@ impl Simd4x4x16 {
     pub fn is_all_zero(self) -> bool {
         self.0[0].is_all_zero() && self.0[1].is_all_zero()
     }
+
+    pub fn set_bit(&mut self, i: u8, j: u8, bit: u8) {
+        todo!()
+    }
 }
 
 impl BitXor for Simd4x4x16 {

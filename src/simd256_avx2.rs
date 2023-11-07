@@ -37,6 +37,10 @@ impl Simd4x4x16 {
     pub fn is_all_zero(self) -> bool {
         unsafe { _mm256_testz_si256(self.0, self.0) != 0 }
     }
+
+    pub fn set_bit(&mut self, i: u8, j: u8, bit: u8) {
+        todo!()
+    }
 }
 
 impl BitXor for Simd4x4x16 {

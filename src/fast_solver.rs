@@ -1,7 +1,11 @@
 use crate::{
-    board::Board,
+    board::{row_major_coordinates, Board, Coordinates},
+    digit::Digit,
     digit_box::DigitBox,
     digit_set::DigitSet,
+    queue::Queue,
+    small::Small,
+    small_set::SmallSet,
     solver::{Solver, SolverStep},
 };
 
@@ -13,13 +17,11 @@ pub struct FastSolver {
 impl Solver for FastSolver {
     fn new(board: &Board) -> Self {
         let mut state = SearchState::initial();
-        /*
-        for square in board.squares() {
-            let digit = board[square];
-            if let Some(digit) = digit {
-                state.variables[square.i][square.j].asserted[digit] = true;
+        for coord in row_major_coordinates() {
+            if let Some(digit) = board.square(coord.into()).to_digit() {
+                state.assert_digit(coord, digit);
             }
-        }*/
+        }
         Self {
             remaining: vec![state],
         }
@@ -30,7 +32,7 @@ impl Solver for FastSolver {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 struct SearchState {
     /// variables[i][j][y][x][d]
     /// At most one of the four coordinates can be 3.
@@ -43,6 +45,10 @@ struct SearchState {
     /// variables[i][3]: horizontal band
     /// variables[3][j]: vertical band
     variables: [[Variables4x4x9; 4]; 4],
+
+    /// In queue: 4 * i + j.
+    processing_queue: Queue<Small<15>, 16>,
+    unprocessed: SmallSet<15, u16>,
 }
 
 impl SearchState {
@@ -75,7 +81,16 @@ impl SearchState {
                 [box_variables, box_variables, box_variables, band_variables],
                 [band_variables, band_variables, band_variables, empty_variables],
             ],
+
+            processing_queue: Queue::new(),
+            unprocessed: SmallSet::EMPTY,
         }
+    }
+
+    fn assert_digit(&mut self, coord: Coordinates, digit: Digit) {
+        self.variables[usize::from(coord.big[0])][usize::from(coord.big[1])]
+            .asserted
+            .set(coord.small[0].into(), coord.small[1].into(), digit);
     }
 }
 

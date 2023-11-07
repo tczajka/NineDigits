@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{digit_set::DigitSet, simd256::Simd4x4x16};
+use crate::{digit::Digit, digit_set::DigitSet, simd256::Simd4x4x16, small::Small};
 
 /// 4x4 box of `DigitSet`s.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -9,6 +9,10 @@ pub struct DigitBox(Simd4x4x16);
 impl DigitBox {
     pub fn empty() -> Self {
         Self::from([[DigitSet::EMPTY; 4]; 4])
+    }
+
+    pub fn set(&mut self, y: u8, x: u8, digit: Digit) {
+        self.0.set_bit(y, x, Small::<9>::from(digit).into());
     }
 }
 

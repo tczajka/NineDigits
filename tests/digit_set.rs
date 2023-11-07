@@ -3,11 +3,11 @@ use sudoku_game::{digit::Digit, digit_set::DigitSet};
 #[test]
 fn test_digit_set() {
     assert_eq!(DigitSet::EMPTY.to_string(), "");
-    assert_eq!(DigitSet::ALL.to_string(), "123456789");
+    assert_eq!(DigitSet::all().to_string(), "123456789");
 
     let mut set = DigitSet::EMPTY;
     assert_eq!(set, DigitSet::EMPTY);
-    assert_ne!(set, DigitSet::ALL);
+    assert_ne!(set, DigitSet::all());
 
     let three = Digit::try_from('3').unwrap();
     let nine = Digit::try_from('9').unwrap();

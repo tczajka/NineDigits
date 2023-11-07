@@ -2,7 +2,7 @@ use crate::{
     digit::{Digit, OptionalDigit},
     error::InvalidInput,
     small::Small,
-    square_set::SquareSet,
+    small_set::SmallSet,
 };
 use std::{
     fmt::{self, Display, Formatter},
@@ -61,17 +61,21 @@ impl From<Small<81>> for Coordinates {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Board {
     squares: [OptionalDigit; 81],
     empty: SquareSet,
 }
 
+pub type SquareSet = SmallSet<81, u128>;
+
 impl Board {
-    pub const EMPTY: Self = Self {
-        squares: [OptionalDigit::NONE; 81],
-        empty: SquareSet::ALL,
-    };
+    pub fn empty() -> Self {
+        Self {
+            squares: [OptionalDigit::NONE; 81],
+            empty: SquareSet::all(),
+        }
+    }
 
     pub fn square(&self, position: Small<81>) -> OptionalDigit {
         self.squares[position]

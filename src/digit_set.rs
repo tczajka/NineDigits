@@ -1,42 +1,43 @@
-use crate::{digit::Digit, error::InvalidInput, small::Small};
+use crate::{
+    digit::Digit,
+    error::InvalidInput,
+    small_set::{SmallSet, SmallSetIterator},
+};
 use std::{
     fmt::{self, Display, Formatter},
-    ops::BitAnd,
+    ops::{BitAnd, BitAndAssign},
     str::FromStr,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct DigitSet(u16);
+pub struct DigitSet(SmallSet<9, u16>);
 
 impl DigitSet {
-    pub const EMPTY: DigitSet = DigitSet(0);
-    pub const ALL: DigitSet = DigitSet(0x1ff);
+    pub const EMPTY: Self = Self(SmallSet::EMPTY);
+
+    pub fn all() -> Self {
+        Self(SmallSet::all())
+    }
 
     pub fn contains(self, digit: Digit) -> bool {
-        self.0 & 1 << u8::from(Small::<9>::from(digit)) != 0
+        self.0.contains(digit.into())
     }
 
     pub fn insert(&mut self, digit: Digit) {
-        self.0 |= 1 << u8::from(Small::<9>::from(digit));
+        self.0.insert(digit.into())
     }
 
     pub fn remove(&mut self, digit: Digit) {
-        self.0 &= !(1 << u8::from(Small::<9>::from(digit)));
+        self.0.remove(digit.into())
     }
 
     pub fn size(self) -> u8 {
-        self.0.count_ones() as u8
+        self.0.size()
     }
 
     pub fn smallest(self) -> Option<Digit> {
-        if self == DigitSet::EMPTY {
-            return None;
-        }
-        let val = self.0.trailing_zeros() as u8;
-        // SAFETY: `res` is in the range `0..9` because `self` is not empty.
-        let small = unsafe { Small::<9>::new_unchecked(val) };
-        Some(small.into())
+        self.0.smallest().map(|x| x.into())
     }
 }
 
@@ -45,20 +46,18 @@ impl IntoIterator for DigitSet {
     type IntoIter = DigitSetIterator;
 
     fn into_iter(self) -> DigitSetIterator {
-        DigitSetIterator(self)
+        DigitSetIterator(self.0.into_iter())
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct DigitSetIterator(DigitSet);
+pub struct DigitSetIterator(SmallSetIterator<9, u16>);
 
 impl Iterator for DigitSetIterator {
     type Item = Digit;
 
     fn next(&mut self) -> Option<Digit> {
-        let res = self.0.smallest()?;
-        self.0.remove(res);
-        Some(res)
+        self.0.next().map(|x| x.into())
     }
 }
 
@@ -92,5 +91,11 @@ impl BitAnd for DigitSet {
 
     fn bitand(self, rhs: Self) -> Self {
         Self(self.0 & rhs.0)
+    }
+}
+
+impl BitAndAssign for DigitSet {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
     }
 }

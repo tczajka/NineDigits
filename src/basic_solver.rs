@@ -1,9 +1,8 @@
 use crate::{
-    board::{Board, Coordinates, Move},
+    board::{Board, Coordinates, Move, SquareSet},
     digit_set::DigitSet,
     small::Small,
     solver::{Solver, SolverStep},
-    square_set::SquareSet,
 };
 
 #[derive(Debug)]
@@ -93,9 +92,9 @@ struct SearchState {
 impl SearchState {
     fn new() -> Self {
         SearchState {
-            board: Board::EMPTY,
-            line_possibilities: [[[DigitSet::ALL; 3]; 3]; 2],
-            box_possibilities: [[DigitSet::ALL; 3]; 3],
+            board: Board::empty(),
+            line_possibilities: [[[DigitSet::all(); 3]; 3]; 2],
+            box_possibilities: [[DigitSet::all(); 3]; 3],
         }
     }
 

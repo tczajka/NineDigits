@@ -1,4 +1,4 @@
-use sudoku_game::{digit_box::DigitBox, digit_set::DigitSet};
+use sudoku_game::{digit_box::DigitBox, small_set::DigitSet};
 
 #[test]
 fn test_digit_box_array() {

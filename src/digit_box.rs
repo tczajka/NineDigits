@@ -6,6 +6,12 @@ use crate::{digit_set::DigitSet, simd256::Simd4x4x16};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DigitBox(Simd4x4x16);
 
+impl DigitBox {
+    pub fn empty() -> Self {
+        Self::from([[DigitSet::EMPTY; 4]; 4])
+    }
+}
+
 impl From<[[DigitSet; 4]; 4]> for DigitBox {
     fn from(x: [[DigitSet; 4]; 4]) -> Self {
         let x: [[u16; 4]; 4] = unsafe { mem::transmute(x) };

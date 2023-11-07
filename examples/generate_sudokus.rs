@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn generate(max_solutions: u64, rng: &mut RandomGenerator) -> Board {
-    let mut board = Board::EMPTY;
+    let mut board = Board::empty();
     loop {
         let mov = random_move(&board, rng);
         let mut board2 = board;

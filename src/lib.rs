@@ -2,6 +2,7 @@
 
 // TODO: Don't include in submission.
 pub mod basic_solver;
+pub mod bits;
 pub mod board;
 pub mod chacha;
 pub mod codecup;
@@ -19,8 +20,8 @@ pub mod simd;
 #[cfg_attr(target_feature = "avx2", path = "simd256_avx2.rs")] // submission::skip
 pub mod simd256;
 pub mod small;
+pub mod small_set;
 pub mod solver;
-pub mod square_set;
 
 #[path = "simd256.rs"] // submission::skip
 pub mod simd256_noavx2; // submission::skip

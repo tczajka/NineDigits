@@ -38,6 +38,12 @@ impl Simd4x4x16 {
         let j1: Small<8> = Small::combine(i1, j);
         self.0[i0].set_bit(j1, bit);
     }
+
+    pub fn clear_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
+        let (i0, i1): (Small<2>, Small<2>) = i.split();
+        let j1: Small<8> = Small::combine(i1, j);
+        self.0[i0].clear_bit(j1, bit);
+    }
 }
 
 impl BitAnd for Simd4x4x16 {

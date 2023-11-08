@@ -1,4 +1,4 @@
-use sudoku_game::{simd::Simd4x32, simd256::Simd4x4x16};
+use sudoku_game::{simd::Simd4x32, simd256::Simd4x4x16, small::Small};
 
 #[test]
 fn test_simd4x32_array() {
@@ -194,4 +194,40 @@ fn test_simd4x4x16_bitops() {
     let mut x = a;
     x ^= b;
     assert_eq!(x, expected_xor);
+}
+
+#[test]
+fn test_simd4x4x16_set_clear_bit() {
+    let a = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+    ]);
+
+    let expected_1 = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0x2ff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+    ]);
+
+    let expected_2 = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x10f, 0xf0, 0xff],
+        [0x00, 0x0f, 0xf0, 0xff],
+    ]);
+
+    let mut x = a;
+
+    x.set_bit(Small::new(0), Small::new(3), Small::new(9));
+    assert_eq!(x, expected_1);
+    x.clear_bit(Small::new(0), Small::new(3), Small::new(9));
+    assert_eq!(x, a);
+
+    x.set_bit(Small::new(2), Small::new(1), Small::new(8));
+    assert_eq!(x, expected_2);
+    x.clear_bit(Small::new(2), Small::new(1), Small::new(8));
+    assert_eq!(x, a);
 }

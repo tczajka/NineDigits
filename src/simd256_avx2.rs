@@ -2,7 +2,6 @@ use std::{
     mem,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
 };
-
 #[rustfmt::skip]
 use std::arch::x86_64::{
     __m256i,
@@ -14,8 +13,7 @@ use std::arch::x86_64::{
     _mm256_testz_si256,
     _mm256_xor_si256,
 };
-
-use crate::small::Small;
+use crate::{bits::Bits, small::Small};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Simd4x4x16(__m256i);
@@ -53,8 +51,18 @@ impl Simd4x4x16 {
         Self(unsafe { _mm256_andnot_si256(rhs.0, self.0) })
     }
 
+    fn single_bit(i: Small<4>, j: Small<4>, bit: Small<16>) -> Self {
+        let mut arr = [[0; 4]; 4];
+        arr[i][j] = u16::single_bit(u8::from(bit));
+        arr.into()
+    }
+
     pub fn set_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
-        todo!()
+        *self |= Self::single_bit(i, j, bit);
+    }
+
+    pub fn clear_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
+        *self = self.and_not(Self::single_bit(i, j, bit));
     }
 }
 

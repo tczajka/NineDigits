@@ -29,8 +29,7 @@ use std::arch::x86_64::{
     // SSE4.1
     _mm_test_all_zeros,
 };
-
-use crate::small::Small;
+use crate::{bits::Bits, small::Small};
 
 macro_rules! define_simd_128 {
     ($simd:ident = [$elem:ident; $n:literal]) => {
@@ -145,8 +144,18 @@ define_all_simd_128! {
 }
 
 impl Simd8x16 {
+    pub fn single_bit(i: Small<8>, bit: Small<16>) -> Self {
+        let mut arr = [0; 8];
+        arr[i] = u16::single_bit(u8::from(bit));
+        arr.into()
+    }
+
     pub fn set_bit(&mut self, i: Small<8>, bit: Small<16>) {
-        todo!()
+        *self |= Self::single_bit(i, bit);
+    }
+
+    pub fn clear_bit(&mut self, i: Small<8>, bit: Small<16>) {
+        *self = self.and_not(Self::single_bit(i, bit));
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    board::{box_major_coordinates, Board, Coordinates},
+    board::{box_major_coordinates, Board, Coordinates, FilledBoard},
     digit::Digit,
     digit_box::DigitBox,
     digit_set::DigitSet,
@@ -28,11 +28,22 @@ impl Solver for FastSolver {
     }
 
     fn step(&mut self) -> SolverStep {
-        todo!()
+        let Some(mut state) = self.remaining.pop() else {
+            return SolverStep::Done;
+        };
+        loop {
+            if state.simplify().is_none() {
+                return SolverStep::NoProgress;
+            }
+            if state.is_finished() {
+                return SolverStep::Found(state.get_solution());
+            }
+            self.remaining.push(state.branch());
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct SearchState {
     /// variables[i][j][y][x][d]
     /// At most one of the four coordinates can be 3.
@@ -100,6 +111,23 @@ impl SearchState {
             self.processing_queue.push(box_index);
             self.unprocessed.insert(box_index);
         }
+    }
+
+    /// Returns `None` if the state is inconsistent.
+    fn simplify(&mut self) -> Option<()> {
+        todo!()
+    }
+
+    fn is_finished(&self) -> bool {
+        todo!()
+    }
+
+    fn branch(&mut self) -> Self {
+        todo!()
+    }
+
+    fn get_solution(&self) -> FilledBoard {
+        todo!()
     }
 }
 

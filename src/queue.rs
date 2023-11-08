@@ -54,6 +54,19 @@ impl<T, const M: usize> Queue<T, M> {
     }
 }
 
+impl<T, const M: usize> Clone for Queue<T, M>
+where
+    T: Copy,
+{
+    fn clone(&self) -> Self {
+        Self {
+            elems: self.elems,
+            head: self.head,
+            tail: self.tail,
+        }
+    }
+}
+
 impl<T, const M: usize> Default for Queue<T, M> {
     fn default() -> Self {
         Self::new()

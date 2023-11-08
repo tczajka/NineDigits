@@ -1,5 +1,8 @@
 use crate::{error::InvalidInput, random::RandomGenerator};
-use std::ops::{Index, IndexMut};
+use std::{
+    hint::unreachable_unchecked,
+    ops::{Index, IndexMut},
+};
 
 /// A number in range 0..L.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -42,13 +45,16 @@ impl<const L: usize> Small<L> {
 
 impl<const L: usize> From<Small<L>> for u8 {
     fn from(x: Small<L>) -> Self {
+        if x.0 >= L as u8 {
+            unsafe { unreachable_unchecked() }
+        }
         x.0
     }
 }
 
 impl<const L: usize> From<Small<L>> for usize {
     fn from(x: Small<L>) -> Self {
-        x.0.into()
+        u8::from(x).into()
     }
 }
 

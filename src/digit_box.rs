@@ -11,7 +11,7 @@ impl DigitBox {
         Self::from([[DigitSet::EMPTY; 4]; 4])
     }
 
-    pub fn set(&mut self, y: u8, x: u8, digit: Digit) {
+    pub fn set(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
         self.0.set_bit(y, x, Small::<9>::from(digit).into());
     }
 }

@@ -1,5 +1,11 @@
-use crate::simd::Simd8x16;
-use std::{mem, ops::BitXor, ops::BitXorAssign};
+use crate::{
+    simd::Simd8x16,
+    small::{CartesianProduct, Small},
+};
+use std::{
+    mem,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Simd4x4x16([Simd8x16; 2]);
@@ -23,8 +29,42 @@ impl Simd4x4x16 {
         self.0[0].is_all_zero() && self.0[1].is_all_zero()
     }
 
-    pub fn set_bit(&mut self, i: u8, j: u8, bit: u8) {
-        todo!()
+    pub fn and_not(self, rhs: Self) -> Self {
+        Self([self.0[0].and_not(rhs.0[0]), self.0[1].and_not(rhs.0[1])])
+    }
+
+    pub fn set_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
+        let (i0, i1): (Small<2>, Small<2>) = i.split();
+        let j1: Small<8> = Small::combine(i1, j);
+        self.0[i0].set_bit(j1, bit);
+    }
+}
+
+impl BitAnd for Simd4x4x16 {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Self([self.0[0] & rhs.0[0], self.0[1] & rhs.0[1]])
+    }
+}
+
+impl BitAndAssign for Simd4x4x16 {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs;
+    }
+}
+
+impl BitOr for Simd4x4x16 {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self([self.0[0] | rhs.0[0], self.0[1] | rhs.0[1]])
+    }
+}
+
+impl BitOrAssign for Simd4x4x16 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
     }
 }
 

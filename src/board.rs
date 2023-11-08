@@ -1,7 +1,7 @@
 use crate::{
     digit::{Digit, OptionalDigit},
     error::InvalidInput,
-    small::Small,
+    small::{CartesianProduct, Small},
     small_set::SmallSet,
 };
 use std::{
@@ -29,31 +29,32 @@ pub fn row_major_coordinates() -> impl Iterator<Item = Coordinates> {
     })
 }
 
+pub fn box_major_coordinates() -> impl Iterator<Item = Coordinates> {
+    Small::<3>::all().flat_map(|big0| {
+        Small::<3>::all().flat_map(move |big1| {
+            Small::<3>::all().flat_map(move |small0| {
+                Small::<3>::all().map(move |small1| Coordinates {
+                    big: [big0, big1],
+                    small: [small0, small1],
+                })
+            })
+        })
+    })
+}
+
 impl From<Coordinates> for Small<81> {
     fn from(coords: Coordinates) -> Self {
-        let mut val = u8::from(coords.big[0]);
-        val = 3 * val + u8::from(coords.big[1]);
-        val = 3 * val + u8::from(coords.small[0]);
-        val = 3 * val + u8::from(coords.small[1]);
-        // SAFETY: Result smaller than 3^4 = 81.
-        unsafe { Small::new_unchecked(val) }
+        let big: Small<9> = Small::combine(coords.big[0], coords.big[1]);
+        let small: Small<9> = Small::combine(coords.small[0], coords.small[1]);
+        Small::combine(big, small)
     }
 }
 
 impl From<Small<81>> for Coordinates {
     fn from(val: Small<81>) -> Self {
-        let mut val = u8::from(val);
-        // SAFETY: val % 3 < 3.
-        let small1 = unsafe { Small::new_unchecked(val % 3) };
-        val /= 3;
-        // SAFETY: val % 3 < 3.
-        let small0 = unsafe { Small::new_unchecked(val % 3) };
-        val /= 3;
-        // SAFETY: val % 3 < 3.
-        let big1 = unsafe { Small::new_unchecked(val % 3) };
-        val /= 3;
-        // SAFETY: val < 3^4 / 3^3 = 3.
-        let big0 = unsafe { Small::new_unchecked(val) };
+        let (big, small) = val.split();
+        let (big0, big1) = big.split();
+        let (small0, small1) = small.split();
         Self {
             big: [big0, big1],
             small: [small0, small1],

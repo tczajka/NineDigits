@@ -8,13 +8,15 @@ compile_error!("simd module requires SSE4.1");
 
 use std::{
     mem,
-    ops::{Add, AddAssign, BitXor, BitXorAssign},
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
 };
 #[rustfmt::skip]
 use std::arch::x86_64::{
     __m128i,
     // SSE2
     _mm_add_epi32,
+    _mm_and_si128,
+    _mm_andnot_si128,
     _mm_loadu_si128,
     _mm_shuffle_epi32,
     _mm_slli_epi32,
@@ -28,6 +30,8 @@ use std::arch::x86_64::{
     _mm_test_all_zeros,
 };
 
+use crate::small::Small;
+
 macro_rules! define_simd_128 {
     ($simd:ident = [$elem:ident; $n:literal]) => {
         #[derive(Copy, Clone, Debug)]
@@ -36,6 +40,10 @@ macro_rules! define_simd_128 {
         impl $simd {
             pub fn is_all_zero(self) -> bool {
                 unsafe { _mm_test_all_zeros(self.0, self.0) != 0 }
+            }
+
+            pub fn and_not(self, rhs: Self) -> Self {
+                Self(unsafe { _mm_andnot_si128(rhs.0, self.0) })
             }
         }
 
@@ -62,6 +70,34 @@ macro_rules! define_simd_128 {
         }
 
         impl Eq for $simd {}
+
+        impl BitAnd for $simd {
+            type Output = Self;
+
+            fn bitand(self, rhs: Self) -> Self {
+                Self(unsafe { _mm_and_si128(self.0, rhs.0) })
+            }
+        }
+
+        impl BitAndAssign for $simd {
+            fn bitand_assign(&mut self, rhs: Self) {
+                *self = *self & rhs;
+            }
+        }
+
+        impl BitOr for $simd {
+            type Output = Self;
+
+            fn bitor(self, rhs: Self) -> Self {
+                Self(unsafe { _mm_or_si128(self.0, rhs.0) })
+            }
+        }
+
+        impl BitOrAssign for $simd {
+            fn bitor_assign(&mut self, rhs: Self) {
+                *self = *self | rhs;
+            }
+        }
 
         impl BitXor for $simd {
             type Output = Self;
@@ -106,6 +142,12 @@ define_all_simd_128! {
     Simd8x16 = [u16; 8],
     Simd4x32 = [u32; 4],
     Simd2x64 = [u64; 2],
+}
+
+impl Simd8x16 {
+    pub fn set_bit(&mut self, i: Small<8>, bit: Small<16>) {
+        todo!()
+    }
 }
 
 impl Simd4x32 {

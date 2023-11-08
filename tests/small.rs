@@ -1,4 +1,4 @@
-use sudoku_game::small::Small;
+use sudoku_game::small::{CartesianProduct, Small};
 
 #[test]
 fn test_small() {
@@ -24,4 +24,28 @@ fn test_array() {
     x[Small::new(0)] = 1;
     assert_eq!(x[Small::new(0)], 1);
     assert_eq!(x[Small::new(2)], 6);
+}
+
+#[test]
+fn test_conversions() {
+    let x = Small::<3>::new(2);
+    let y: Small<4> = x.into();
+    assert_eq!(y, Small::<4>::new(2));
+
+    let x = Small::<16>::new(7);
+    let y: Result<Small<15>, _> = x.try_into();
+    assert_eq!(y, Ok(Small::<15>::new(7)));
+
+    let x = Small::<16>::new(15);
+    let y: Result<Small<15>, _> = x.try_into();
+    assert!(y.is_err());
+}
+
+#[test]
+fn test_cartesian_product() {
+    let x = Small::<4>::combine(Small::<2>::new(1), Small::<2>::new(0));
+    assert_eq!(x, Small::<4>::new(2));
+    let (y, z) = x.split();
+    assert_eq!(y, Small::<2>::new(1));
+    assert_eq!(z, Small::<2>::new(0));
 }

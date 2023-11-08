@@ -1,6 +1,5 @@
+use crate::{error::InvalidInput, random::RandomGenerator};
 use std::ops::{Index, IndexMut};
-
-use crate::random::RandomGenerator;
 
 /// A number in range 0..L.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -70,3 +69,69 @@ impl<T, const N: usize> IndexMut<Small<N>> for [T; N] {
         unsafe { self.get_unchecked_mut(index) }
     }
 }
+
+macro_rules! impl_from {
+    ($a:literal => $b:literal) => {
+        impl From<Small<$a>> for Small<$b> {
+            fn from(x: Small<$a>) -> Self {
+                // SAFETY: $a < $b.
+                unsafe { Small::new_unchecked(x.0) }
+            }
+        }
+    };
+}
+
+impl_from!(3 => 4);
+impl_from!(9 => 16);
+
+macro_rules! impl_try_from {
+    ($a:literal => $b:literal) => {
+        impl TryFrom<Small<$a>> for Small<$b> {
+            type Error = InvalidInput;
+
+            fn try_from(x: Small<$a>) -> Result<Self, InvalidInput> {
+                if x.0 < $b {
+                    // SAFETY: $a < $b.
+                    Ok(unsafe { Small::new_unchecked(x.0) })
+                } else {
+                    Err(InvalidInput)
+                }
+            }
+        }
+    };
+}
+
+impl_try_from!(16 => 15);
+
+pub trait CartesianProduct<A, B> {
+    fn combine(lhs: A, rhs: B) -> Self;
+    fn split(self) -> (A, B);
+}
+
+macro_rules! impl_cartesian_product {
+    ($n:literal = $a:literal x $b:literal) => {
+        impl CartesianProduct<Small<$a>, Small<$b>> for Small<$n> {
+            fn combine(a: Small<$a>, b: Small<$b>) -> Self {
+                let a = u8::from(a);
+                let b = u8::from(b);
+                let n = a * $b + b;
+                // SAFETY: $n = $a * $b.
+                unsafe { Self::new_unchecked(n) }
+            }
+
+            fn split(self) -> (Small<$a>, Small<$b>) {
+                let n = u8::from(self);
+                let a = n / $b;
+                let b = n % $b;
+                // SAFETY: $n = $a * $b.
+                unsafe { (Small::new_unchecked(a), Small::new_unchecked(b)) }
+            }
+        }
+    };
+}
+
+impl_cartesian_product!(4 = 2 x 2);
+impl_cartesian_product!(8 = 2 x 4);
+impl_cartesian_product!(9 = 3 x 3);
+impl_cartesian_product!(16 = 4 x 4);
+impl_cartesian_product!(81 = 9 x 9);

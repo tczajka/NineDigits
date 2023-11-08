@@ -1,10 +1,10 @@
 use crate::{
-    board::{row_major_coordinates, Board, Coordinates},
+    board::{box_major_coordinates, Board, Coordinates},
     digit::Digit,
     digit_box::DigitBox,
     digit_set::DigitSet,
     queue::Queue,
-    small::Small,
+    small::{CartesianProduct, Small},
     small_set::SmallSet,
     solver::{Solver, SolverStep},
 };
@@ -17,7 +17,7 @@ pub struct FastSolver {
 impl Solver for FastSolver {
     fn new(board: &Board) -> Self {
         let mut state = SearchState::initial();
-        for coord in row_major_coordinates() {
+        for coord in box_major_coordinates() {
             if let Some(digit) = board.square(coord.into()).to_digit() {
                 state.assert_digit(coord, digit);
             }
@@ -44,7 +44,7 @@ struct SearchState {
     /// variables[i][j]: box
     /// variables[i][3]: horizontal band
     /// variables[3][j]: vertical band
-    variables: [[Variables4x4x9; 4]; 4],
+    variables: [Variables4x4x9; 15],
 
     /// In queue: 4 * i + j.
     processing_queue: Queue<Small<15>, 16>,
@@ -71,15 +71,14 @@ impl SearchState {
 
         let box_variables = Variables4x4x9::initial(box_all);
         let band_variables = Variables4x4x9::initial(band_all);
-        let empty_variables = Variables4x4x9::initial(DigitBox::empty());
 
         Self {
             #[rustfmt::skip]
             variables: [
-                [box_variables, box_variables, box_variables, band_variables],
-                [box_variables, box_variables, box_variables, band_variables],
-                [box_variables, box_variables, box_variables, band_variables],
-                [band_variables, band_variables, band_variables, empty_variables],
+                box_variables, box_variables, box_variables, band_variables,
+                box_variables, box_variables, box_variables, band_variables,
+                box_variables, box_variables, box_variables, band_variables,
+                band_variables, band_variables, band_variables,
             ],
 
             processing_queue: Queue::new(),
@@ -88,10 +87,26 @@ impl SearchState {
     }
 
     fn assert_digit(&mut self, coord: Coordinates, digit: Digit) {
-        self.variables[usize::from(coord.big[0])][usize::from(coord.big[1])]
+        let box_index = encode_box_index(coord.big[0].into(), coord.big[1].into());
+        self.variables[box_index]
             .asserted
             .set(coord.small[0].into(), coord.small[1].into(), digit);
+
+        self.add_to_queue(box_index);
     }
+
+    fn add_to_queue(&mut self, box_index: Small<15>) {
+        if !self.unprocessed.contains(box_index) {
+            self.processing_queue.push(box_index);
+            self.unprocessed.insert(box_index);
+        }
+    }
+}
+
+/// Panics if y=x=3.
+fn encode_box_index(y: Small<4>, x: Small<4>) -> Small<15> {
+    let res: Small<16> = Small::combine(y, x);
+    res.try_into().unwrap()
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -77,14 +77,30 @@ fn test_simd4x32_add() {
 }
 
 #[test]
-fn test_simd4x32_xor() {
+fn test_simd4x32_bitops() {
     let x = Simd4x32::from([0b1111, 0b0000, 0b1111, 0b0000]);
     let y = Simd4x32::from([0b0101, 0b0101, 0b0101, 0b0111]);
-    let z = Simd4x32::from([0b1010, 0b0101, 0b1010, 0b0111]);
-    assert_eq!(x ^ y, z);
+    let expected_and = Simd4x32::from([0b0101, 0b0000, 0b0101, 0b0000]);
+    let expected_and_not = Simd4x32::from([0b1010, 0b0000, 0b1010, 0b0000]);
+    let expected_or = Simd4x32::from([0b1111, 0b0101, 0b1111, 0b0111]);
+    let expected_xor = Simd4x32::from([0b1010, 0b0101, 0b1010, 0b0111]);
+
+    assert_eq!(x & y, expected_and);
+    let mut a = x;
+    a &= y;
+    assert_eq!(a, expected_and);
+
+    assert_eq!(x.and_not(y), expected_and_not);
+
+    assert_eq!(x | y, expected_or);
+    let mut a = x;
+    a |= y;
+    assert_eq!(a, expected_or);
+
+    assert_eq!(x ^ y, expected_xor);
     let mut a = x;
     a ^= y;
-    assert_eq!(a, z);
+    assert_eq!(a, expected_xor);
 }
 
 #[test]
@@ -119,7 +135,7 @@ fn test_simd4x4x16_eq() {
 }
 
 #[test]
-fn test_simd4x4x16_xor() {
+fn test_simd4x4x16_bitops() {
     let a = Simd4x4x16::from([
         [0x00, 0x0f, 0xf0, 0xff],
         [0x00, 0x0f, 0xf0, 0xff],
@@ -134,15 +150,48 @@ fn test_simd4x4x16_xor() {
         [0xff, 0xff, 0xff, 0xff],
     ]);
 
-    let expected = Simd4x4x16::from([
+    let expected_and = Simd4x4x16::from([
+        [0x00, 0x00, 0x00, 0x00],
+        [0x00, 0x0f, 0x00, 0x0f],
+        [0x00, 0x00, 0xf0, 0xf0],
+        [0x00, 0x0f, 0xf0, 0xff],
+    ]);
+
+    let expected_and_not = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x00, 0x00, 0xf0, 0xf0],
+        [0x00, 0x0f, 0x00, 0x0f],
+        [0x00, 0x00, 0x00, 0x00],
+    ]);
+
+    let expected_or = Simd4x4x16::from([
+        [0x00, 0x0f, 0xf0, 0xff],
+        [0x0f, 0x0f, 0xff, 0xff],
+        [0xf0, 0xff, 0xf0, 0xff],
+        [0xff, 0xff, 0xff, 0xff],
+    ]);
+
+    let expected_xor = Simd4x4x16::from([
         [0x00, 0x0f, 0xf0, 0xff],
         [0x0f, 0x00, 0xff, 0xf0],
         [0xf0, 0xff, 0x00, 0x0f],
         [0xff, 0xf0, 0x0f, 0x00],
     ]);
 
-    assert_eq!(a ^ b, expected);
+    assert_eq!(a & b, expected_and);
+    let mut x = a;
+    x &= b;
+    assert_eq!(x, expected_and);
+
+    assert_eq!(a.and_not(b), expected_and_not);
+
+    assert_eq!(a | b, expected_or);
+    let mut x = a;
+    x |= b;
+    assert_eq!(x, expected_or);
+
+    assert_eq!(a ^ b, expected_xor);
     let mut x = a;
     x ^= b;
-    assert_eq!(x, expected);
+    assert_eq!(x, expected_xor);
 }

@@ -1,10 +1,21 @@
 use std::{
-    arch::x86_64::{
-        __m256i, _mm256_loadu_si256, _mm256_storeu_si256, _mm256_testz_si256, _mm256_xor_si256,
-    },
     mem,
-    ops::{BitXor, BitXorAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
 };
+
+#[rustfmt::skip]
+use std::arch::x86_64::{
+    __m256i,
+    _mm256_and_si256,
+    _mm256_andnot_si256,
+    _mm256_loadu_si256,
+    _mm256_or_si256,
+    _mm256_storeu_si256,
+    _mm256_testz_si256,
+    _mm256_xor_si256,
+};
+
+use crate::small::Small;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Simd4x4x16(__m256i);
@@ -38,11 +49,42 @@ impl Simd4x4x16 {
         unsafe { _mm256_testz_si256(self.0, self.0) != 0 }
     }
 
-    pub fn set_bit(&mut self, i: u8, j: u8, bit: u8) {
+    pub fn and_not(self, rhs: Self) -> Self {
+        Self(unsafe { _mm256_andnot_si256(rhs.0, self.0) })
+    }
+
+    pub fn set_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
         todo!()
     }
 }
 
+impl BitAnd for Simd4x4x16 {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Self(unsafe { _mm256_and_si256(self.0, rhs.0) })
+    }
+}
+
+impl BitAndAssign for Simd4x4x16 {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs;
+    }
+}
+
+impl BitOr for Simd4x4x16 {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(unsafe { _mm256_or_si256(self.0, rhs.0) })
+    }
+}
+
+impl BitOrAssign for Simd4x4x16 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
 impl BitXor for Simd4x4x16 {
     type Output = Self;
 

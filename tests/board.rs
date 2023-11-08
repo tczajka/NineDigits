@@ -1,5 +1,5 @@
 use sudoku_game::{
-    board::{Board, Coordinates, FilledBoard, FullMove, Move},
+    board::{box_major_coordinates, Board, Coordinates, FilledBoard, FullMove, Move},
     error::InvalidInput,
     small::Small,
 };
@@ -8,6 +8,15 @@ use sudoku_game::{
 fn test_coordinates() {
     for i in Small::all() {
         assert_eq!(Small::<81>::from(Coordinates::from(i)), i);
+    }
+}
+
+#[test]
+fn test_box_major_coordinates() {
+    let v: Vec<Coordinates> = box_major_coordinates().collect();
+    assert_eq!(v.len(), 81);
+    for (sq, coord) in Small::<81>::all().zip(v.iter()) {
+        assert_eq!(Small::<81>::from(*coord), sq);
     }
 }
 

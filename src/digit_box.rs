@@ -32,6 +32,13 @@ impl From<[[u16; 4]; 4]> for Box4x4x16 {
     }
 }
 
+impl From<Box4x4x16> for [[u16; 4]; 4] {
+    fn from(x: Box4x4x16) -> Self {
+        let x: [u16; 16] = x.0.into();
+        unsafe { mem::transmute(x) }
+    }
+}
+
 /// 4x4 box of `DigitSet`s.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DigitBox(Box4x4x16);
@@ -55,5 +62,13 @@ impl From<[[DigitSet; 4]; 4]> for DigitBox {
         // SAFETY: DigitSet is repr(transparent) over u16.
         let x: [[u16; 4]; 4] = unsafe { mem::transmute(x) };
         Self(x.into())
+    }
+}
+
+impl From<DigitBox> for [[DigitSet; 4]; 4] {
+    fn from(x: DigitBox) -> Self {
+        let x: [[u16; 4]; 4] = x.0.into();
+        // SAFETY: DigitSet is repr(transparent) over u16.
+        unsafe { mem::transmute(x) }
     }
 }

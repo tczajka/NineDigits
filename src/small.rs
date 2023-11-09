@@ -78,27 +78,19 @@ impl<T, const N: usize> IndexMut<Small<N>> for [T; N] {
 }
 
 macro_rules! impl_extend {
-    ($a:literal => $b:literal) => {
+    ($a:literal < $b:literal) => {
         impl From<Small<$a>> for Small<$b> {
             fn from(x: Small<$a>) -> Self {
                 // SAFETY: $a < $b.
                 unsafe { Small::new_unchecked(x.0) }
             }
         }
-    };
-}
 
-impl_extend!(3 => 4);
-impl_extend!(9 => 16);
-
-macro_rules! impl_contract {
-    ($a:literal => $b:literal) => {
-        impl TryFrom<Small<$a>> for Small<$b> {
+        impl TryFrom<Small<$b>> for Small<$a> {
             type Error = InvalidInput;
 
-            fn try_from(x: Small<$a>) -> Result<Self, InvalidInput> {
-                if x.0 < $b {
-                    // SAFETY: $a < $b.
+            fn try_from(x: Small<$b>) -> Result<Self, InvalidInput> {
+                if x.0 < $a {
                     Ok(unsafe { Small::new_unchecked(x.0) })
                 } else {
                     Err(InvalidInput)
@@ -108,7 +100,9 @@ macro_rules! impl_contract {
     };
 }
 
-impl_contract!(16 => 15);
+impl_extend!(3 < 4);
+impl_extend!(9 < 16);
+impl_extend!(15 < 16);
 
 pub trait CartesianProduct<A, B> {
     fn combine(lhs: A, rhs: B) -> Self;

@@ -9,7 +9,7 @@ pub struct Queue<T, const M: usize> {
 }
 
 impl<T, const M: usize> Queue<T, M> {
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         Self {
             // Safety: array of `MaybeUninit` doesn't need initialization.
             elems: unsafe { MaybeUninit::uninit().assume_init() },
@@ -64,12 +64,6 @@ where
             head: self.head,
             tail: self.tail,
         }
-    }
-}
-
-impl<T, const M: usize> Default for Queue<T, M> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

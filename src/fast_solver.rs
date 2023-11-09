@@ -1,5 +1,39 @@
+/// variables[i][j][y][x][d]
+/// At most one of the four coordinates can be 3.
+/// variables[i][j][y][x]: x_ijyxd
+/// variables[i][j][y][3]: h_ijyd (horizontal triad, inverted)
+/// variables[i][j][3][x]: v_ijxd (vertical triad, inverted)
+/// variables[i][3][y][x]: h_ixyd (horizontal triad, inverted, copied)
+/// variables[3][j][y][x]: v_jyxd (vertical triad, inverted, copied)
+/// variables[i][j]: box
+/// variables[i][3]: horizontal band
+/// variables[3][j]: vertical band
+///
+/// Constraints:
+/// A (one digit per square):
+/// sum_d x_ijyx = 1
+///
+/// B (three digits per triad):
+/// sum_d h_ijyd = 6
+/// sum_d v_ijyd = 6
+///
+/// C (triad definitions)
+/// sum_x x_ijyxd + h_ijyd = 1
+/// sum_y x_ijyxd + v_ijyd = 1
+///
+/// D (one digit per box)
+/// sum_x v_jyxd = 2
+/// sum_y h_ixyd = 2
+///
+/// E (one digit per row/column)
+/// sum_i h_ijyd = 2
+/// sum_j v_ijyd = 2
+///
+/// Once a constraint is tight, `possible` and `asserted` will be set tight for that sum.
+/// If `asserted` is not a subset of `possible`, one of those sums will become out of bands.
+/// So no need to separately check whether `asserted` is a subset of `possible`.
 use crate::{
-    board::{box_major_coordinates, Board, Coordinates, FilledBoard},
+    board::{box_major_coordinates, Board, Coordinates, FilledBoard, Move},
     digit::Digit,
     digit_box::DigitBox,
     digit_set::DigitSet,
@@ -32,7 +66,7 @@ impl Solver for FastSolver {
             return SolverStep::Done;
         };
         loop {
-            if state.simplify().is_none() {
+            if state.simplify().is_err() {
                 return SolverStep::NoProgress;
             }
             if let Some(filled_board) = state.get_solution() {
@@ -43,23 +77,57 @@ impl Solver for FastSolver {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum VariableBigCoord {
+    Box(Small<3>, Small<3>),
+    HBand(Small<3>),
+    VBand(Small<3>),
+}
+
+impl VariableBigCoord {
+    fn encode(self) -> Small<15> {
+        let (i, j): (Small<4>, Small<4>) = match self {
+            Self::Box(i, j) => (i.into(), j.into()),
+            Self::HBand(i) => (i.into(), Small::<4>::new(3)),
+            Self::VBand(j) => (Small::<4>::new(3), j.into()),
+        };
+        Small::<16>::combine(i, j).try_into().unwrap()
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ProcessingQueue {
+    queue: Queue<VariableBigCoord, 16>,
+    unprocessed: SmallSet<15, u16>,
+}
+
+impl ProcessingQueue {
+    fn empty() -> Self {
+        Self {
+            queue: Queue::empty(),
+            unprocessed: SmallSet::EMPTY,
+        }
+    }
+
+    fn push(&mut self, big_coord: VariableBigCoord) {
+        let box_index = big_coord.encode();
+        if !self.unprocessed.contains(box_index) {
+            self.queue.push(big_coord);
+            self.unprocessed.insert(box_index);
+        }
+    }
+
+    fn pop(&mut self) -> Option<VariableBigCoord> {
+        let big_coord = self.queue.pop()?;
+        self.unprocessed.remove(big_coord.encode());
+        Some(big_coord)
+    }
+}
+
 #[derive(Clone, Debug)]
 struct SearchState {
-    /// variables[i][j][y][x][d]
-    /// At most one of the four coordinates can be 3.
-    /// variables[i][j][y][x]: x_ijyx
-    /// variables[i][j][y][3]: h_ijy (horizontal triad)
-    /// variables[i][j][3][x]: v_ijx (vertical triad)
-    /// variables[i][3][y][x]: h_ixy (horizontal triad)
-    /// variables[3][j][y][x]: v_jyx (vertical triad)
-    /// variables[i][j]: box
-    /// variables[i][3]: horizontal band
-    /// variables[3][j]: vertical band
     variables: [Variables4x4x9; 15],
-
-    /// In queue: 4 * i + j.
-    processing_queue: Queue<Small<15>, 16>,
-    unprocessed: SmallSet<15, u16>,
+    queue: ProcessingQueue,
 }
 
 impl SearchState {
@@ -92,29 +160,61 @@ impl SearchState {
                 band_variables, band_variables, band_variables,
             ],
 
-            processing_queue: Queue::new(),
-            unprocessed: SmallSet::EMPTY,
+            queue: ProcessingQueue::empty(),
         }
     }
 
     fn assert_digit(&mut self, coord: Coordinates, digit: Digit) {
-        let box_index = encode_box_index(coord.big[0].into(), coord.big[1].into());
-        self.variables[box_index]
-            .asserted
-            .set(coord.small[0].into(), coord.small[1].into(), digit);
-
-        self.add_to_queue(box_index);
+        let big_coord = VariableBigCoord::Box(coord.big[0], coord.big[1]);
+        self.variables[big_coord.encode()].asserted.set(
+            coord.small[0].into(),
+            coord.small[1].into(),
+            digit,
+        );
+        self.queue.push(big_coord);
     }
 
-    fn add_to_queue(&mut self, box_index: Small<15>) {
-        if !self.unprocessed.contains(box_index) {
-            self.processing_queue.push(box_index);
-            self.unprocessed.insert(box_index);
+    /// `Err` if the state is inconsistent.
+    fn simplify(&mut self) -> Result<(), ()> {
+        while let Some(big_coord) = self.queue.pop() {
+            match big_coord {
+                VariableBigCoord::Box(big0, big1) => self.simplify_box(big0, big1)?,
+                VariableBigCoord::HBand(big0) => self.simplify_hband(big0)?,
+                VariableBigCoord::VBand(big1) => self.simplify_vband(big1)?,
+            }
         }
+        Ok(())
     }
 
-    /// `None` if the state is inconsistent.
-    fn simplify(&mut self) -> Option<()> {
+    fn simplify_box(&mut self, big0: Small<3>, big1: Small<3>) -> Result<(), ()> {
+        let box_coord = VariableBigCoord::Box(big0, big1);
+        let box_index = box_coord.encode();
+
+        if self.variables[box_index].process_box()? {
+            {
+                let hband_coord = VariableBigCoord::HBand(big0);
+                let hband_index = hband_coord.encode();
+                let (variables0, variables1) = self.variables.split_at_mut(hband_index.into());
+                variables0[usize::from(box_index)].propagate_to_hband(&mut variables1[0], big1);
+                self.queue.push(hband_coord);
+            }
+            {
+                let vband_coord = VariableBigCoord::VBand(big1);
+                let vband_index = vband_coord.encode();
+                let (variables0, variables1) = self.variables.split_at_mut(vband_index.into());
+                variables0[usize::from(box_index)].propagate_to_vband(&mut variables1[0], big0);
+                self.queue.push(vband_coord);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn simplify_hband(&mut self, big0: Small<3>) -> Result<(), ()> {
+        todo!()
+    }
+
+    fn simplify_vband(&mut self, big1: Small<3>) -> Result<(), ()> {
         todo!()
     }
 
@@ -124,14 +224,36 @@ impl SearchState {
 
     // `None` if the search isn't finished.
     fn get_solution(&self) -> Option<FilledBoard> {
-        todo!()
+        for variables in &self.variables {
+            if variables.asserted != variables.possible {
+                return None;
+            }
+        }
+        let mut board = Board::empty();
+        for big0 in Small::<3>::all() {
+            for big1 in Small::<3>::all() {
+                let big_coord = VariableBigCoord::Box(big0, big1);
+                let digit_sets: [[DigitSet; 4]; 4] =
+                    self.variables[big_coord.encode()].asserted.into();
+                for small0 in Small::<3>::all() {
+                    for small1 in Small::<3>::all() {
+                        let coord = Coordinates {
+                            big: [big0, big1],
+                            small: [small0, small1],
+                        };
+                        let square = coord.into();
+                        let mut digit_set =
+                            digit_sets[Small::<4>::from(small0)][Small::<4>::from(small1)];
+                        let digit = digit_set.smallest().unwrap();
+                        digit_set.remove(digit);
+                        assert_eq!(digit_set, DigitSet::EMPTY);
+                        board.make_move(Move { square, digit });
+                    }
+                }
+            }
+        }
+        Some(board.into_filled())
     }
-}
-
-/// Panics if y=x=3.
-fn encode_box_index(y: Small<4>, x: Small<4>) -> Small<15> {
-    let res: Small<16> = Small::combine(y, x);
-    res.try_into().unwrap()
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -150,5 +272,45 @@ impl Variables4x4x9 {
             asserted_processed: DigitBox::empty(),
             possible_processed: possible,
         }
+    }
+}
+
+impl Variables4x4x9 {
+    // Returns whether something changed.
+    fn process_box(&mut self) -> Result<bool, ()> {
+        let mut changed = false;
+        loop {
+            if self.asserted_processed != self.asserted {
+                self.process_box_asserted()?;
+                changed = true;
+            } else if changed {
+                // We don't break on the first iteration.
+                // On subsequent iterations `changed` is true and we break.
+                break;
+            }
+
+            if self.possible_processed == self.possible {
+                break;
+            }
+            self.process_box_possible()?;
+            changed = true;
+        }
+        Ok(changed)
+    }
+
+    fn process_box_asserted(&mut self) -> Result<(), ()> {
+        todo!()
+    }
+
+    fn process_box_possible(&mut self) -> Result<(), ()> {
+        todo!()
+    }
+
+    fn propagate_to_hband(&mut self, hband: &mut Self, big1: Small<3>) {
+        todo!()
+    }
+
+    fn propagate_to_vband(&mut self, vband: &mut Self, big0: Small<3>) {
+        todo!()
     }
 }

@@ -2,7 +2,7 @@ use sudoku_game::queue::Queue;
 
 #[test]
 fn test_queue() {
-    let mut queue: Queue<u32, 4> = Queue::new();
+    let mut queue: Queue<u32, 4> = Queue::empty();
     queue.push(1);
     queue.push(2);
     assert!(!queue.is_empty());
@@ -21,7 +21,7 @@ fn test_queue() {
 #[test]
 #[should_panic]
 fn test_queue_overflow() {
-    let mut queue: Queue<u32, 4> = Queue::new();
+    let mut queue: Queue<u32, 4> = Queue::empty();
     queue.push(1);
     queue.push(2);
     queue.push(3);

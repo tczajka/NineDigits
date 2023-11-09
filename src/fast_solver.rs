@@ -35,8 +35,8 @@ impl Solver for FastSolver {
             if state.simplify().is_none() {
                 return SolverStep::NoProgress;
             }
-            if state.is_finished() {
-                return SolverStep::Found(state.get_solution());
+            if let Some(filled_board) = state.get_solution() {
+                return SolverStep::Found(filled_board);
             }
             self.remaining.push(state.branch());
         }
@@ -113,12 +113,8 @@ impl SearchState {
         }
     }
 
-    /// Returns `None` if the state is inconsistent.
+    /// `None` if the state is inconsistent.
     fn simplify(&mut self) -> Option<()> {
-        todo!()
-    }
-
-    fn is_finished(&self) -> bool {
         todo!()
     }
 
@@ -126,7 +122,8 @@ impl SearchState {
         todo!()
     }
 
-    fn get_solution(&self) -> FilledBoard {
+    // `None` if the search isn't finished.
+    fn get_solution(&self) -> Option<FilledBoard> {
         todo!()
     }
 }

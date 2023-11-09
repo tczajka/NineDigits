@@ -26,3 +26,14 @@ fn test_digit_set() {
     assert_eq!(set.to_string(), "124");
     assert_eq!(set.size(), 3);
 }
+
+#[test]
+fn test_digit_set_bitops() {
+    let a: DigitSet = "142".parse().unwrap();
+    let b: DigitSet = "245".parse().unwrap();
+    let c: DigitSet = "24".parse().unwrap();
+    assert_eq!(a & b, c);
+    let mut x = a;
+    x &= b;
+    assert_eq!(x, c);
+}

@@ -32,20 +32,21 @@ impl<const L: usize> Small<L> {
 
     /// A random `Small`.
     pub fn new_random(rng: &mut RandomGenerator) -> Self {
-        assert!(L < 256);
-        Self(rng.uniform_u8(L as u8))
+        assert!(L <= 256);
+        Self(rng.uniform_usize(L) as u8)
     }
 
     /// Iterate all.
     pub fn all() -> impl Iterator<Item = Self> {
+        assert!(L <= 256);
         // Safety: `i` is in range 0..L.
-        (0..u8::try_from(L).unwrap()).map(|i| unsafe { Self::new_unchecked(i) })
+        (0..L).map(|i| unsafe { Self::new_unchecked(i as u8) })
     }
 }
 
 impl<const L: usize> From<Small<L>> for u8 {
     fn from(x: Small<L>) -> Self {
-        if x.0 >= L as u8 {
+        if usize::from(x.0) >= L {
             unsafe { unreachable_unchecked() }
         }
         x.0
@@ -76,7 +77,7 @@ impl<T, const N: usize> IndexMut<Small<N>> for [T; N] {
     }
 }
 
-macro_rules! impl_from {
+macro_rules! impl_extend {
     ($a:literal => $b:literal) => {
         impl From<Small<$a>> for Small<$b> {
             fn from(x: Small<$a>) -> Self {
@@ -87,10 +88,10 @@ macro_rules! impl_from {
     };
 }
 
-impl_from!(3 => 4);
-impl_from!(9 => 16);
+impl_extend!(3 => 4);
+impl_extend!(9 => 16);
 
-macro_rules! impl_try_from {
+macro_rules! impl_contract {
     ($a:literal => $b:literal) => {
         impl TryFrom<Small<$a>> for Small<$b> {
             type Error = InvalidInput;
@@ -107,7 +108,7 @@ macro_rules! impl_try_from {
     };
 }
 
-impl_try_from!(16 => 15);
+impl_contract!(16 => 15);
 
 pub trait CartesianProduct<A, B> {
     fn combine(lhs: A, rhs: B) -> Self;
@@ -139,5 +140,15 @@ macro_rules! impl_cartesian_product {
 impl_cartesian_product!(4 = 2 x 2);
 impl_cartesian_product!(8 = 2 x 4);
 impl_cartesian_product!(9 = 3 x 3);
+impl_cartesian_product!(16 = 2 x 8);
 impl_cartesian_product!(16 = 4 x 4);
+impl_cartesian_product!(32 = 2 x 16);
 impl_cartesian_product!(81 = 9 x 9);
+impl_cartesian_product!(128 = 2 x 64);
+impl_cartesian_product!(128 = 4 x 32);
+impl_cartesian_product!(128 = 8 x 16);
+impl_cartesian_product!(128 = 16 x 8);
+impl_cartesian_product!(256 = 4 x 64);
+impl_cartesian_product!(256 = 8 x 32);
+impl_cartesian_product!(256 = 16 x 16);
+impl_cartesian_product!(256 = 32 x 8);

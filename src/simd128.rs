@@ -22,6 +22,7 @@ use std::arch::x86_64::{
     _mm_slli_epi32,
     _mm_srli_epi32,
     _mm_or_si128,
+    _mm_setzero_si128,
     _mm_storeu_si128,
     _mm_xor_si128,
     // SSSE3
@@ -29,7 +30,7 @@ use std::arch::x86_64::{
     // SSE4.1
     _mm_test_all_zeros,
 };
-use crate::{bits::Bits, small::Small};
+use crate::small::{CartesianProduct, Small};
 
 macro_rules! define_simd_128 {
     ($simd:ident = [$elem:ident; $n:literal]) => {
@@ -37,12 +38,28 @@ macro_rules! define_simd_128 {
         pub struct $simd(__m128i);
 
         impl $simd {
+            pub fn zero() -> Self {
+                Self(unsafe { _mm_setzero_si128() })
+            }
+
             pub fn is_all_zero(self) -> bool {
                 unsafe { _mm_test_all_zeros(self.0, self.0) != 0 }
             }
 
             pub fn and_not(self, rhs: Self) -> Self {
                 Self(unsafe { _mm_andnot_si128(rhs.0, self.0) })
+            }
+
+            fn single_bit(i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) -> Self {
+                Self(single_bit_128(Small::<128>::combine(i, bit)))
+            }
+
+            pub fn set_bit(&mut self, i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) {
+                *self |= Self::single_bit(i, bit);
+            }
+
+            pub fn clear_bit(&mut self, i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) {
+                *self = self.and_not(Self::single_bit(i, bit));
             }
         }
 
@@ -143,22 +160,6 @@ define_all_simd_128! {
     Simd2x64 = [u64; 2],
 }
 
-impl Simd8x16 {
-    pub fn single_bit(i: Small<8>, bit: Small<16>) -> Self {
-        let mut arr = [0; 8];
-        arr[i] = u16::single_bit(u8::from(bit));
-        arr.into()
-    }
-
-    pub fn set_bit(&mut self, i: Small<8>, bit: Small<16>) {
-        *self |= Self::single_bit(i, bit);
-    }
-
-    pub fn clear_bit(&mut self, i: Small<8>, bit: Small<16>) {
-        *self = self.and_not(Self::single_bit(i, bit));
-    }
-}
-
 impl Simd4x32 {
     pub fn rotate_bits_7(self) -> Self {
         Self(unsafe { _mm_or_si128(_mm_slli_epi32::<7>(self.0), _mm_srli_epi32::<25>(self.0)) })
@@ -203,4 +204,11 @@ impl AddAssign for Simd4x32 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
+}
+
+fn single_bit_128(bit: Small<128>) -> __m128i {
+    let (half, b): (Small<2>, Small<64>) = bit.split();
+    let mut val = [0u64; 2];
+    val[half] = 1 << u8::from(b);
+    Simd2x64::from(val).0
 }

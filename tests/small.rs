@@ -19,6 +19,12 @@ fn test_all() {
 }
 
 #[test]
+fn test_small_256() {
+    assert_eq!(u8::from(Small::<256>::new(255)), 255);
+    assert!(Small::<256>::all().map(u8::from).eq(0..=255));
+}
+
+#[test]
 fn test_array() {
     let mut x = [6; 5];
     x[Small::new(0)] = 1;

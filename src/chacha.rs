@@ -1,4 +1,4 @@
-use crate::simd::{Simd16x8, Simd2x64, Simd4x32};
+use crate::simd128::{Simd16x8, Simd2x64, Simd4x32};
 
 pub fn chacha20_block(key: &[u8; 32], nonce: u64, counter: u64) -> [u8; 64] {
     let input: [Simd4x32; 4] = [

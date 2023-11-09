@@ -1,5 +1,5 @@
 use crate::{
-    simd::Simd8x16,
+    simd128::{Simd16x8, Simd2x64, Simd4x32, Simd8x16},
     small::{CartesianProduct, Small},
 };
 use std::{
@@ -7,83 +7,118 @@ use std::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Simd4x4x16([Simd8x16; 2]);
+macro_rules! define_simd_256 {
+    ($simd:ident = [$elem:ident; $n:literal] = [$half:ident; 2]) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        pub struct $simd([$half; 2]);
 
-impl From<[[u16; 4]; 4]> for Simd4x4x16 {
-    fn from(x: [[u16; 4]; 4]) -> Self {
-        let x: [[u16; 8]; 2] = unsafe { mem::transmute(x) };
-        Self([Simd8x16::from(x[0]), Simd8x16::from(x[1])])
-    }
+        impl $simd {
+            pub fn zero() -> Self {
+                Self([$half::zero(); 2])
+            }
+
+            pub fn is_all_zero(self) -> bool {
+                self.0[0].is_all_zero() && self.0[1].is_all_zero()
+            }
+
+            pub fn and_not(self, rhs: Self) -> Self {
+                Self([self.0[0].and_not(rhs.0[0]), self.0[1].and_not(rhs.0[1])])
+            }
+
+            pub fn set_bit(&mut self, i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) {
+                let (half, j): (Small<2>, Small<{ $n / 2 }>) = i.split();
+                self.0[half].set_bit(j, bit);
+            }
+
+            pub fn clear_bit(&mut self, i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) {
+                let (half, j): (Small<2>, Small<{ $n / 2 }>) = i.split();
+                self.0[half].clear_bit(j, bit);
+            }
+        }
+
+        impl From<[$elem; $n]> for $simd {
+            fn from(x: [$elem; $n]) -> Self {
+                let x: [[$elem; $n / 2]; 2] = unsafe { mem::transmute(x) };
+                Self([<$half>::from(x[0]), <$half>::from(x[1])])
+            }
+        }
+
+        impl From<$simd> for [$elem; $n] {
+            fn from(x: $simd) -> Self {
+                let x: [[$elem; $n / 2]; 2] = [x.0[0].into(), x.0[1].into()];
+                unsafe { mem::transmute(x) }
+            }
+        }
+
+        impl BitAnd for $simd {
+            type Output = Self;
+
+            fn bitand(self, rhs: Self) -> Self {
+                Self([self.0[0] & rhs.0[0], self.0[1] & rhs.0[1]])
+            }
+        }
+
+        impl BitAndAssign for $simd {
+            fn bitand_assign(&mut self, rhs: Self) {
+                *self = *self & rhs;
+            }
+        }
+
+        impl BitOr for $simd {
+            type Output = Self;
+
+            fn bitor(self, rhs: Self) -> Self {
+                Self([self.0[0] | rhs.0[0], self.0[1] | rhs.0[1]])
+            }
+        }
+
+        impl BitOrAssign for $simd {
+            fn bitor_assign(&mut self, rhs: Self) {
+                *self = *self | rhs;
+            }
+        }
+
+        impl BitXor for $simd {
+            type Output = Self;
+
+            fn bitxor(self, rhs: Self) -> Self {
+                Self([self.0[0] ^ rhs.0[0], self.0[1] ^ rhs.0[1]])
+            }
+        }
+
+        impl BitXorAssign for $simd {
+            fn bitxor_assign(&mut self, rhs: Self) {
+                *self = *self ^ rhs;
+            }
+        }
+    };
 }
 
-impl From<Simd4x4x16> for [[u16; 4]; 4] {
-    fn from(x: Simd4x4x16) -> Self {
-        let x: [[u16; 8]; 2] = [x.0[0].into(), x.0[1].into()];
-        unsafe { mem::transmute(x) }
-    }
+macro_rules! convert_simd_256 {
+    ($from:ident -> $to:ident) => {
+        impl From<$from> for $to {
+            fn from(x: $from) -> Self {
+                Self([x.0[0].into(), x.0[1].into()])
+            }
+        }
+    };
 }
 
-impl Simd4x4x16 {
-    pub fn is_all_zero(self) -> bool {
-        self.0[0].is_all_zero() && self.0[1].is_all_zero()
-    }
-
-    pub fn and_not(self, rhs: Self) -> Self {
-        Self([self.0[0].and_not(rhs.0[0]), self.0[1].and_not(rhs.0[1])])
-    }
-
-    pub fn set_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
-        let (i0, i1): (Small<2>, Small<2>) = i.split();
-        let j1: Small<8> = Small::combine(i1, j);
-        self.0[i0].set_bit(j1, bit);
-    }
-
-    pub fn clear_bit(&mut self, i: Small<4>, j: Small<4>, bit: Small<16>) {
-        let (i0, i1): (Small<2>, Small<2>) = i.split();
-        let j1: Small<8> = Small::combine(i1, j);
-        self.0[i0].clear_bit(j1, bit);
-    }
+macro_rules! define_all_simd_256 {
+    () => {};
+    ($simd:ident = $t1:tt = $t2:tt, $($simd2:ident = $u1:tt = $u2:tt,)*) => {
+        define_simd_256!($simd = $t1 = $t2);
+        $(
+            convert_simd_256!($simd -> $simd2);
+            convert_simd_256!($simd2 -> $simd);
+        )*
+        define_all_simd_256!($($simd2 = $u1 = $u2,)*);
+    };
 }
 
-impl BitAnd for Simd4x4x16 {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self {
-        Self([self.0[0] & rhs.0[0], self.0[1] & rhs.0[1]])
-    }
-}
-
-impl BitAndAssign for Simd4x4x16 {
-    fn bitand_assign(&mut self, rhs: Self) {
-        *self = *self & rhs;
-    }
-}
-
-impl BitOr for Simd4x4x16 {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self {
-        Self([self.0[0] | rhs.0[0], self.0[1] | rhs.0[1]])
-    }
-}
-
-impl BitOrAssign for Simd4x4x16 {
-    fn bitor_assign(&mut self, rhs: Self) {
-        *self = *self | rhs;
-    }
-}
-
-impl BitXor for Simd4x4x16 {
-    type Output = Self;
-
-    fn bitxor(self, rhs: Self) -> Self {
-        Self([self.0[0] ^ rhs.0[0], self.0[1] ^ rhs.0[1]])
-    }
-}
-
-impl BitXorAssign for Simd4x4x16 {
-    fn bitxor_assign(&mut self, rhs: Self) {
-        *self = *self ^ rhs;
-    }
+define_all_simd_256! {
+    Simd32x8 = [u8; 32] = [Simd16x8; 2],
+    Simd16x16 = [u16; 16] = [Simd8x16; 2],
+    Simd8x32 = [u32; 8] = [Simd4x32; 2],
+    Simd4x64 = [u64; 4] = [Simd2x64; 2],
 }

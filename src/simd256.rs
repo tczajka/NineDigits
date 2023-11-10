@@ -127,4 +127,24 @@ impl Simd16x16 {
     pub fn popcount_9(self) -> Self {
         Self([self.0[0].popcount_9(), self.0[1].popcount_9()])
     }
+
+    pub fn any_lt(self, other: Self) -> bool {
+        self.0[0].any_lt(other.0[0]) || self.0[1].any_lt(other.0[1])
+    }
+
+    /// Returns 0xffff for equal values, 0 otherwise.
+    pub fn masks_eq(self, other: Self) -> Self {
+        Self([
+            self.0[0].masks_eq(other.0[0]),
+            self.0[1].masks_eq(other.0[1]),
+        ])
+    }
+
+    /// mask contains 0xffff for entries to replace.
+    pub fn replace(self, mask: Self, other: Self) -> Self {
+        Self([
+            self.0[0].replace(mask.0[0], other.0[0]),
+            self.0[1].replace(mask.0[1], other.0[1]),
+        ])
+    }
 }

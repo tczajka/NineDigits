@@ -9,6 +9,9 @@ use std::arch::x86_64::{
     _mm256_add_epi16,
     _mm256_and_si256,
     _mm256_andnot_si256,
+    _mm256_blendv_epi8,
+    _mm256_cmpeq_epi16,
+    _mm256_cmpgt_epi16,
     _mm256_loadu_si256,
     _mm256_or_si256,
     _mm256_set1_epi16,
@@ -173,6 +176,23 @@ impl Simd16x16 {
             _mm256_add_epi16(_mm256_add_epi16(sum_04, sum_48), bit_8)
         };
         Self(res)
+    }
+
+    pub fn any_lt(self, other: Self) -> bool {
+        unsafe {
+            let lt = _mm256_cmpgt_epi16(other.0, self.0);
+            _mm256_testz_si256(lt, lt) == 0
+        }
+    }
+
+    /// Returns 0xffff for equal values, 0 otherwise.
+    pub fn masks_eq(self, other: Self) -> Self {
+        Self(unsafe { _mm256_cmpeq_epi16(self.0, other.0) })
+    }
+
+    /// mask contains 0xffff for entries to replace.
+    pub fn replace(self, mask: Self, other: Self) -> Self {
+        Self(unsafe { _mm256_blendv_epi8(self.0, other.0, mask.0) })
     }
 }
 

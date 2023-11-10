@@ -35,7 +35,7 @@
 use crate::{
     board::{box_major_coordinates, Board, Coordinates, FilledBoard, Move},
     digit::Digit,
-    digit_box::DigitBox,
+    digit_box::{Box4x4x16, DigitBox},
     digit_set::DigitSet,
     queue::Queue,
     small::{CartesianProduct, Small},
@@ -299,11 +299,40 @@ impl Variables4x4x9 {
     }
 
     fn process_box_asserted(&mut self) -> Result<(), ()> {
-        todo!()
+        // Equations A and B.
+        let counts_target =
+            Box4x4x16::from([[1, 1, 1, 6], [1, 1, 1, 6], [1, 1, 1, 6], [6, 6, 6, 0]]);
+
+        let counts = self.asserted.counts();
+        if counts.any_gt(counts_target) {
+            return Err(());
+        }
+        let satisfied = counts.masks_eq(counts_target);
+        self.possible &= self.possible.replace(satisfied, self.asserted);
+
+        // TODO: Equations C and D.
+
+        self.asserted_processed = self.asserted;
+
+        Ok(())
     }
 
     fn process_box_possible(&mut self) -> Result<(), ()> {
-        todo!()
+        // Equations A and B.
+        let counts_target =
+            Box4x4x16::from([[1, 1, 1, 6], [1, 1, 1, 6], [1, 1, 1, 6], [6, 6, 6, 0]]);
+
+        let counts = self.possible.counts();
+        if counts.any_lt(counts_target) {
+            return Err(());
+        }
+        let satisfied = counts.masks_eq(counts_target);
+        self.asserted |= self.asserted.replace(satisfied, self.possible);
+
+        // TODO: Equations C and D.
+
+        self.possible_processed = self.possible;
+        Ok(())
     }
 
     fn propagate_to_hband(&mut self, hband: &mut Self, big1: Small<3>) {

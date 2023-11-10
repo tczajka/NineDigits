@@ -18,6 +18,9 @@ use std::arch::x86_64::{
     _mm_add_epi32,
     _mm_and_si128,
     _mm_andnot_si128,
+    _mm_blendv_epi8,
+    _mm_cmpeq_epi16,
+    _mm_cmplt_epi16,
     _mm_loadu_si128,
     _mm_set1_epi16,
     _mm_setr_epi8,
@@ -181,6 +184,23 @@ impl Simd8x16 {
             _mm_add_epi16(_mm_add_epi16(sum_04, sum_48), bit_8)
         };
         Self(res)
+    }
+
+    pub fn any_lt(self, other: Self) -> bool {
+        unsafe {
+            let lt = _mm_cmplt_epi16(self.0, other.0);
+            _mm_test_all_zeros(lt, lt) == 0
+        }
+    }
+
+    /// Returns 0xffff for equal values, 0 otherwise.
+    pub fn masks_eq(self, other: Self) -> Self {
+        Self(unsafe { _mm_cmpeq_epi16(self.0, other.0) })
+    }
+
+    /// mask contains 0xffff for entries to replace.
+    pub fn replace(self, mask: Self, other: Self) -> Self {
+        Self(unsafe { _mm_blendv_epi8(self.0, other.0, mask.0) })
     }
 }
 

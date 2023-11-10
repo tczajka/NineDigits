@@ -1,10 +1,12 @@
-use std::mem;
-
 use crate::{
     digit::Digit,
     digit_set::DigitSet,
     simd256::Simd16x16,
     small::{CartesianProduct, Small},
+};
+use std::{
+    mem,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign},
 };
 
 /// 4x4 box of `u16`.
@@ -23,6 +25,24 @@ impl Box4x4x16 {
     pub fn clear_bit(&mut self, y: Small<4>, x: Small<4>, bit: Small<16>) {
         self.0.clear_bit(Small::combine(y, x), bit);
     }
+
+    pub fn any_lt(self, other: Self) -> bool {
+        self.0.any_lt(other.0)
+    }
+
+    pub fn any_gt(self, other: Self) -> bool {
+        other.any_lt(self)
+    }
+
+    /// Returns 0xffff for equal values, 0 otherwise.
+    pub fn masks_eq(self, other: Self) -> Self {
+        Self(self.0.masks_eq(other.0))
+    }
+
+    /// mask contains 0xffff for entries to replace.
+    pub fn replace(self, mask: Self, other: Self) -> Self {
+        Self(self.0.replace(mask.0, other.0))
+    }
 }
 
 impl From<[[u16; 4]; 4]> for Box4x4x16 {
@@ -36,6 +56,34 @@ impl From<Box4x4x16> for [[u16; 4]; 4] {
     fn from(x: Box4x4x16) -> Self {
         let x: [u16; 16] = x.0.into();
         unsafe { mem::transmute(x) }
+    }
+}
+
+impl BitAnd for Box4x4x16 {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl BitAndAssign for Box4x4x16 {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl BitOr for Box4x4x16 {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for Box4x4x16 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
     }
 }
 
@@ -59,6 +107,16 @@ impl DigitBox {
     pub fn counts(self) -> Box4x4x16 {
         Box4x4x16(self.0 .0.popcount_9())
     }
+
+    /// Returns 0xffff for equal values, 0 otherwise.
+    pub fn masks_eq(self, other: Self) -> Box4x4x16 {
+        self.0.masks_eq(other.0)
+    }
+
+    /// mask contains 0xffff for entries to replace.
+    pub fn replace(self, mask: Box4x4x16, other: DigitBox) -> Self {
+        Self(self.0.replace(mask, other.0))
+    }
 }
 
 impl From<[[DigitSet; 4]; 4]> for DigitBox {
@@ -74,5 +132,33 @@ impl From<DigitBox> for [[DigitSet; 4]; 4] {
         let x: [[u16; 4]; 4] = x.0.into();
         // SAFETY: DigitSet is repr(transparent) over u16.
         unsafe { mem::transmute(x) }
+    }
+}
+
+impl BitAnd for DigitBox {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl BitAndAssign for DigitBox {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl BitOr for DigitBox {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for DigitBox {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
     }
 }

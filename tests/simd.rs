@@ -1,4 +1,7 @@
-use sudoku_game::{simd128::Simd4x32, simd256::Simd4x64};
+use sudoku_game::{
+    simd128::{Simd4x32, Simd8x16},
+    simd256::{Simd16x16, Simd4x64},
+};
 
 #[test]
 fn test_simd4x32_array() {
@@ -45,6 +48,22 @@ fn test_simd4x32_bitops() {
     let mut a = x;
     a ^= y;
     assert_eq!(a, expected_xor);
+}
+
+#[test]
+fn test_simd8x16_popcount_9() {
+    let a = Simd8x16::from([
+        0b000000000,
+        0b000000001,
+        0b000000100,
+        0b000001000,
+        0b000100000,
+        0b101010101,
+        0b010101010,
+        0b111111111,
+    ]);
+    let expected = Simd8x16::from([0, 1, 1, 1, 1, 5, 4, 9]);
+    assert_eq!(a.popcount_9(), expected);
 }
 
 #[test]
@@ -148,4 +167,28 @@ fn test_simd4x64_bitops() {
     let mut a = x;
     a ^= y;
     assert_eq!(a, expected_xor);
+}
+
+#[test]
+fn test_simd16x16_popcount_9() {
+    let a = Simd16x16::from([
+        0b000000000,
+        0b000000001,
+        0b000000010,
+        0b000000100,
+        0b000001000,
+        0b000010000,
+        0b000100000,
+        0b001000000,
+        0b010000000,
+        0b100000000,
+        0b111100000,
+        0b000011111,
+        0b101010101,
+        0b010101010,
+        0b110011001,
+        0b111111111,
+    ]);
+    let expected = Simd16x16::from([0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 5, 5, 4, 5, 9]);
+    assert_eq!(a.popcount_9(), expected);
 }

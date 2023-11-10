@@ -122,3 +122,9 @@ define_all_simd_256! {
     Simd8x32 = [u32; 8] = [Simd4x32; 2],
     Simd4x64 = [u64; 4] = [Simd2x64; 2],
 }
+
+impl Simd16x16 {
+    pub fn popcount_9(self) -> Self {
+        Self([self.0[0].popcount_9(), self.0[1].popcount_9()])
+    }
+}

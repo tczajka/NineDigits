@@ -5,11 +5,17 @@ use std::{
 #[rustfmt::skip]
 use std::arch::x86_64::{
     __m256i,
+    _mm_setr_epi8,
+    _mm256_add_epi16,
     _mm256_and_si256,
     _mm256_andnot_si256,
     _mm256_loadu_si256,
     _mm256_or_si256,
+    _mm256_set1_epi16,
+    _mm256_setr_m128i,
     _mm256_setzero_si256,
+    _mm256_shuffle_epi8,
+    _mm256_srli_epi16,
     _mm256_storeu_si256,
     _mm256_testz_si256,
     _mm256_xor_si256,
@@ -146,6 +152,28 @@ define_all_simd_256! {
     Simd16x16 = [u16; 16],
     Simd8x32 = [u32; 8],
     Simd4x64 = [u64; 4],
+}
+
+impl Simd16x16 {
+    pub fn popcount_9(self) -> Self {
+        let res = unsafe {
+            let popcount_4_table_128 =
+                _mm_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+            let popcount_4_table = _mm256_setr_m128i(popcount_4_table_128, popcount_4_table_128);
+            let shr_8_table_128 =
+                _mm_setr_epi8(1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1);
+            let shr_8_table = _mm256_setr_m128i(shr_8_table_128, shr_8_table_128);
+            let mask_04 = _mm256_set1_epi16(0b1111);
+
+            let bits_04 = _mm256_and_si256(self.0, mask_04);
+            let sum_04 = _mm256_shuffle_epi8(popcount_4_table, bits_04);
+            let bits_48 = _mm256_and_si256(_mm256_srli_epi16::<4>(self.0), mask_04);
+            let sum_48 = _mm256_shuffle_epi8(popcount_4_table, bits_48);
+            let bit_8 = _mm256_shuffle_epi8(self.0, shr_8_table);
+            _mm256_add_epi16(_mm256_add_epi16(sum_04, sum_48), bit_8)
+        };
+        Self(res)
+    }
 }
 
 fn single_bit_256(bit: Small<256>) -> __m256i {

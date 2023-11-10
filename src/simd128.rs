@@ -14,12 +14,16 @@ use std::{
 use std::arch::x86_64::{
     __m128i,
     // SSE2
+    _mm_add_epi16,
     _mm_add_epi32,
     _mm_and_si128,
     _mm_andnot_si128,
     _mm_loadu_si128,
+    _mm_set1_epi16,
+    _mm_setr_epi8,
     _mm_shuffle_epi32,
     _mm_slli_epi32,
+    _mm_srli_epi16,
     _mm_srli_epi32,
     _mm_or_si128,
     _mm_setzero_si128,
@@ -158,6 +162,26 @@ define_all_simd_128! {
     Simd8x16 = [u16; 8],
     Simd4x32 = [u32; 4],
     Simd2x64 = [u64; 2],
+}
+
+impl Simd8x16 {
+    /// Each element is replaced by popcount, under the assumption that inputs are 9-bit.
+    pub fn popcount_9(self) -> Self {
+        let res = unsafe {
+            let popcount_4_table = _mm_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+            let shr_8_table =
+                _mm_setr_epi8(1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1);
+            let mask_04 = _mm_set1_epi16(0b1111);
+
+            let bits_04 = _mm_and_si128(self.0, mask_04);
+            let sum_04 = _mm_shuffle_epi8(popcount_4_table, bits_04);
+            let bits_48 = _mm_and_si128(_mm_srli_epi16::<4>(self.0), mask_04);
+            let sum_48 = _mm_shuffle_epi8(popcount_4_table, bits_48);
+            let bit_8 = _mm_shuffle_epi8(self.0, shr_8_table);
+            _mm_add_epi16(_mm_add_epi16(sum_04, sum_48), bit_8)
+        };
+        Self(res)
+    }
 }
 
 impl Simd4x32 {

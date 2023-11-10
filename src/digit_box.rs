@@ -55,6 +55,10 @@ impl DigitBox {
     pub fn clear(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
         self.0.clear_bit(y, x, Small::<9>::from(digit).into());
     }
+
+    pub fn counts(self) -> Box4x4x16 {
+        Box4x4x16(self.0 .0.popcount_9())
+    }
 }
 
 impl From<[[DigitSet; 4]; 4]> for DigitBox {

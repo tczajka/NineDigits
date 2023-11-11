@@ -17,8 +17,11 @@ pub mod player;
 pub mod queue;
 pub mod random;
 pub mod simd128;
-#[cfg_attr(target_feature = "avx2", path = "simd256_avx2.rs")] // submission::skip
-pub mod simd256;
+#[cfg(target_feature = "avx2")] // submission::skip
+pub mod simd256; // submission::skip
+#[cfg(not(target_feature = "avx2"))] // submission::skip
+pub use simd256_emulated as simd256;
+pub mod simd256_emulated;
 pub mod small;
 pub mod small_set;
 pub mod solver;

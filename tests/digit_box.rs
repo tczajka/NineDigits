@@ -67,6 +67,24 @@ fn test_bitops() {
     .map(|row| row.map(|s| s.parse().unwrap()))
     .into();
 
+    let expected_xor: DigitBox = [
+        ["17", "24", "457", "456789"],
+        ["12", "", "1234", "579"],
+        ["43", "", "13", ""],
+        ["13456789", "145", "347", "2468"],
+    ]
+    .map(|row| row.map(|s| s.parse().unwrap()))
+    .into();
+
+    let expected_andnot: DigitBox = [
+        ["1", "2", "45", "456789"],
+        ["12", "", "1234", "579"],
+        ["43", "", "1", ""],
+        ["13456789", "145", "347", "2468"],
+    ]
+    .map(|row| row.map(|s| s.parse().unwrap()))
+    .into();
+
     assert_eq!(a & b, expected_and);
     let mut x = a;
     x &= b;
@@ -76,6 +94,13 @@ fn test_bitops() {
     let mut x = a;
     x |= b;
     assert_eq!(x, expected_or);
+
+    assert_eq!(a ^ b, expected_xor);
+    let mut x = a;
+    x ^= b;
+    assert_eq!(x, expected_xor);
+
+    assert_eq!(a.and_not(b), expected_andnot);
 }
 
 #[test]

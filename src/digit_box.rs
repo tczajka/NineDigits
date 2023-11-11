@@ -6,7 +6,7 @@ use crate::{
 };
 use std::{
     mem,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
 };
 
 /// 4x4 box of `u16`.
@@ -24,6 +24,10 @@ impl Box4x4x16 {
 
     pub fn clear_bit(&mut self, y: Small<4>, x: Small<4>, bit: Small<16>) {
         self.0.clear_bit(Small::combine(y, x), bit);
+    }
+
+    pub fn and_not(self, other: Self) -> Self {
+        Self(self.0.and_not(other.0))
     }
 
     pub fn any_lt(self, other: Self) -> bool {
@@ -87,6 +91,20 @@ impl BitOrAssign for Box4x4x16 {
     }
 }
 
+impl BitXor for Box4x4x16 {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl BitXorAssign for Box4x4x16 {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
 /// 4x4 box of `DigitSet`s.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DigitBox(Box4x4x16);
@@ -102,6 +120,10 @@ impl DigitBox {
 
     pub fn clear(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
         self.0.clear_bit(y, x, Small::<9>::from(digit).into());
+    }
+
+    pub fn and_not(self, other: Self) -> Self {
+        Self(self.0.and_not(other.0))
     }
 
     pub fn counts(self) -> Box4x4x16 {
@@ -160,5 +182,19 @@ impl BitOr for DigitBox {
 impl BitOrAssign for DigitBox {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
+    }
+}
+
+impl BitXor for DigitBox {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl BitXorAssign for DigitBox {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
     }
 }

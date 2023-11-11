@@ -14,6 +14,7 @@ use std::arch::x86_64::{
     _mm256_cmpgt_epi16,
     _mm256_loadu_si256,
     _mm256_or_si256,
+    _mm256_permute4x64_epi64,
     _mm256_set1_epi16,
     _mm256_setr_m128i,
     _mm256_setzero_si256,
@@ -193,6 +194,22 @@ impl Simd16x16 {
     /// mask contains 0xffff for entries to replace.
     pub fn replace(self, mask: Self, other: Self) -> Self {
         Self(unsafe { _mm256_blendv_epi8(self.0, other.0, mask.0) })
+    }
+
+    /// Rotate every 4 words by 1.
+    pub fn rotate_words_1_mod_4(self) -> Self {
+        let res = unsafe {
+            let shuffle_table_128 =
+                _mm_setr_epi8(6, 7, 0, 1, 2, 3, 4, 5, 14, 15, 8, 9, 10, 11, 12, 13);
+            let shuffle_table = _mm256_setr_m128i(shuffle_table_128, shuffle_table_128);
+            _mm256_shuffle_epi8(self.0, shuffle_table)
+        };
+        Self(res)
+    }
+
+    /// Rotate words by 4.
+    pub fn rotate_words_4(self) -> Self {
+        Self(unsafe { _mm256_permute4x64_epi64::<0b10_01_00_11>(self.0) })
     }
 }
 

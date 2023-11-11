@@ -147,4 +147,20 @@ impl Simd16x16 {
             self.0[1].replace(mask.0[1], other.0[1]),
         ])
     }
+
+    /// Rotate every 4 words by 1.
+    pub fn rotate_words_1_mod_4(self) -> Self {
+        Self([
+            self.0[0].rotate_words_1_mod_4(),
+            self.0[1].rotate_words_1_mod_4(),
+        ])
+    }
+
+    /// Rotate words by 4.
+    pub fn rotate_words_4(self) -> Self {
+        Self([
+            self.0[1].shift_words_minus_4_with_top(self.0[0]),
+            self.0[0].shift_words_minus_4_with_top(self.0[1]),
+        ])
+    }
 }

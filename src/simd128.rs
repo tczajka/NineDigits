@@ -33,6 +33,7 @@ use std::arch::x86_64::{
     _mm_storeu_si128,
     _mm_xor_si128,
     // SSSE3
+    _mm_alignr_epi8,
     _mm_shuffle_epi8,
     // SSE4.1
     _mm_test_all_zeros,
@@ -201,6 +202,20 @@ impl Simd8x16 {
     /// mask contains 0xffff for entries to replace.
     pub fn replace(self, mask: Self, other: Self) -> Self {
         Self(unsafe { _mm_blendv_epi8(self.0, other.0, mask.0) })
+    }
+
+    /// Rotate every 4 words by 1.
+    pub fn rotate_words_1_mod_4(self) -> Self {
+        let res = unsafe {
+            let shuffle_table = _mm_setr_epi8(6, 7, 0, 1, 2, 3, 4, 5, 14, 15, 8, 9, 10, 11, 12, 13);
+            _mm_shuffle_epi8(self.0, shuffle_table)
+        };
+        Self(res)
+    }
+
+    /// Shift [self, other] right by 4 words.
+    pub fn shift_words_minus_4_with_top(self, other: Self) -> Self {
+        Self(unsafe { _mm_alignr_epi8::<8>(other.0, self.0) })
     }
 }
 

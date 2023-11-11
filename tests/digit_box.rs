@@ -208,3 +208,36 @@ fn test_replace() {
 
     assert_eq!(a.replace(mask, b), expected);
 }
+
+#[test]
+fn test_rotate() {
+    let a: DigitBox = [
+        ["1", "2", "3", "4"],
+        ["4", "5", "6", "7"],
+        ["8", "9", "12", "13"],
+        ["14", "15", "16", "17"],
+    ]
+    .map(|row| row.map(|s| s.parse().unwrap()))
+    .into();
+
+    let expected_right: DigitBox = [
+        ["4", "1", "2", "3"],
+        ["7", "4", "5", "6"],
+        ["13", "8", "9", "12"],
+        ["17", "14", "15", "16"],
+    ]
+    .map(|row| row.map(|s| s.parse().unwrap()))
+    .into();
+
+    let expected_down: DigitBox = [
+        ["14", "15", "16", "17"],
+        ["1", "2", "3", "4"],
+        ["4", "5", "6", "7"],
+        ["8", "9", "12", "13"],
+    ]
+    .map(|row| row.map(|s| s.parse().unwrap()))
+    .into();
+
+    assert_eq!(a.rotate_right(), expected_right);
+    assert_eq!(a.rotate_down(), expected_down);
+}

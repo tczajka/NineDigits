@@ -47,6 +47,16 @@ impl Box4x4x16 {
     pub fn replace(self, mask: Self, other: Self) -> Self {
         Self(self.0.replace(mask.0, other.0))
     }
+
+    /// Rotate right by 1.
+    pub fn rotate_right(self) -> Self {
+        Self(self.0.rotate_words_1_mod_4())
+    }
+
+    /// Rotate down by 1.
+    pub fn rotate_down(self) -> Self {
+        Self(self.0.rotate_words_4())
+    }
 }
 
 impl From<[[u16; 4]; 4]> for Box4x4x16 {
@@ -138,6 +148,16 @@ impl DigitBox {
     /// mask contains 0xffff for entries to replace.
     pub fn replace(self, mask: Box4x4x16, other: DigitBox) -> Self {
         Self(self.0.replace(mask, other.0))
+    }
+
+    /// Rotate right by 1.
+    pub fn rotate_right(self) -> Self {
+        Self(self.0.rotate_right())
+    }
+
+    /// Rotate right by 1.
+    pub fn rotate_down(self) -> Self {
+        Self(self.0.rotate_down())
     }
 }
 

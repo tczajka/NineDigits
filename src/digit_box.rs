@@ -1,16 +1,19 @@
 use crate::{
     digit::Digit,
     digit_set::DigitSet,
+    error::InvalidInput,
     simd256::Simd16x16,
     small::{CartesianProduct, Small},
 };
 use std::{
+    fmt::{self, Debug, Display, Formatter},
     mem,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign},
+    str::FromStr,
 };
 
 /// 4x4 box of `u16`.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Box4x4x16(Simd16x16);
 
 impl Box4x4x16 {
@@ -115,8 +118,30 @@ impl BitXorAssign for Box4x4x16 {
     }
 }
 
+impl Display for Box4x4x16 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let a: [[u16; 4]; 4] = (*self).into();
+        for y in 0..4 {
+            for x in 0..4 {
+                write!(f, "{}", a[y][x])?;
+                if x < 3 {
+                    write!(f, "|")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for Box4x4x16 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", *self)
+    }
+}
+
 /// 4x4 box of `DigitSet`s.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct DigitBox(Box4x4x16);
 
 impl DigitBox {
@@ -216,5 +241,49 @@ impl BitXor for DigitBox {
 impl BitXorAssign for DigitBox {
     fn bitxor_assign(&mut self, rhs: Self) {
         self.0 ^= rhs.0;
+    }
+}
+
+impl Display for DigitBox {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let a: [[DigitSet; 4]; 4] = (*self).into();
+        for y in 0..4 {
+            for x in 0..4 {
+                write!(f, "{}", a[y][x])?;
+                if x < 3 {
+                    write!(f, "|")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for DigitBox {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", *self)
+    }
+}
+
+impl FromStr for DigitBox {
+    type Err = InvalidInput;
+
+    fn from_str(s: &str) -> Result<Self, InvalidInput> {
+        let mut a = [[DigitSet::EMPTY; 4]; 4];
+        let lines: Vec<&str> = s.lines().collect();
+        if lines.len() != 4 {
+            return Err(InvalidInput);
+        }
+        for y in 0..4 {
+            let boxes: Vec<&str> = lines[y].split('|').collect();
+            if boxes.len() != 4 {
+                return Err(InvalidInput);
+            }
+            for x in 0..4 {
+                a[y][x] = boxes[x].parse()?;
+            }
+        }
+        Ok(a.into())
     }
 }

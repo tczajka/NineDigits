@@ -4,12 +4,12 @@ use crate::{
     small_set::{SmallSet, SmallSetIterator},
 };
 use std::{
-    fmt::{self, Display, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     ops::{BitAnd, BitAndAssign},
     str::FromStr,
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct DigitSet(SmallSet<9, u16>);
 
@@ -67,6 +67,12 @@ impl Display for DigitSet {
             write!(f, "{digit}")?;
         }
         Ok(())
+    }
+}
+
+impl Debug for DigitSet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", *self)
     }
 }
 

@@ -202,7 +202,7 @@ fn test_masks_eq() {
 }
 
 #[test]
-fn test_pick() {
+fn and_bits() {
     let a: DigitBox = "1|2|3|3
 4|4|4|4
 3|3|3|3
@@ -225,7 +225,7 @@ fn test_pick() {
         .parse()
         .unwrap();
 
-    assert_eq!(a.pick(mask), expected);
+    assert_eq!(a.and_bits(mask), expected);
 }
 
 #[test]
@@ -322,7 +322,7 @@ fn test_rotate() {
 }
 
 #[test]
-fn test_move_to_last_row_column() {
+fn test_move_row_column() {
     let a: DigitBox = "1|2|3|4
 4|5|6|7
 8|9|12|13
@@ -330,70 +330,48 @@ fn test_move_to_last_row_column() {
         .parse()
         .unwrap();
 
-    let expected_move_0_to_last_row: DigitBox = "|||
+    let expected_move_row_03: DigitBox = "|||
 |||
 |||
 1|2|3|4"
         .parse()
         .unwrap();
 
-    let expected_move_1_to_last_row: DigitBox = "|||
+    let expected_move_row_21: DigitBox = "|||
+8|9|12|13
 |||
-|||
-4|5|6|7"
-        .parse()
-        .unwrap();
+|||"
+    .parse()
+    .unwrap();
 
-    let expected_move_2_to_last_row: DigitBox = "|||
-|||
-|||
-8|9|12|13"
-        .parse()
-        .unwrap();
-
-    let expected_move_0_to_last_column: DigitBox = "|||1
+    let expected_move_column_03: DigitBox = "|||1
 |||4
 |||8
 |||14"
         .parse()
         .unwrap();
 
-    let expected_move_1_to_last_column: DigitBox = "|||2
-|||5
-|||9
-|||15"
-        .parse()
-        .unwrap();
-
-    let expected_move_2_to_last_column: DigitBox = "|||3
-|||6
-|||12
-|||16"
+    let expected_move_column_21: DigitBox = "|3||
+|6||
+|12||
+|16||"
         .parse()
         .unwrap();
 
     assert_eq!(
-        a.move_to_last_row(Small::new(0)),
-        expected_move_0_to_last_row
+        a.move_row(Small::new(0), Small::new(3)),
+        expected_move_row_03
     );
     assert_eq!(
-        a.move_to_last_row(Small::new(1)),
-        expected_move_1_to_last_row
+        a.move_row(Small::new(2), Small::new(1)),
+        expected_move_row_21
     );
     assert_eq!(
-        a.move_to_last_row(Small::new(2)),
-        expected_move_2_to_last_row
+        a.move_column(Small::new(0), Small::new(3)),
+        expected_move_column_03
     );
     assert_eq!(
-        a.move_to_last_column(Small::new(0)),
-        expected_move_0_to_last_column
-    );
-    assert_eq!(
-        a.move_to_last_column(Small::new(1)),
-        expected_move_1_to_last_column
-    );
-    assert_eq!(
-        a.move_to_last_column(Small::new(2)),
-        expected_move_2_to_last_column
+        a.move_column(Small::new(2), Small::new(1)),
+        expected_move_column_21
     );
 }

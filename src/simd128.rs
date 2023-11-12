@@ -259,13 +259,16 @@ impl Simd8x16 {
     }
 
     /// Move words 4*n+i to 4*n+3. Other words become zero.
-    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+    pub fn move_words_mod_4(self, from: Small<4>, to: Small<4>) -> Self {
         let res = unsafe {
-            // Shift right by 16*i.
-            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(i)));
+            // Shift right by from words
+            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(from)));
             let a = _mm_srl_epi64(self.0, shift);
-            // Shift left by 48.
-            _mm_slli_epi64::<48>(a)
+            // Shift left by 3 words.
+            let a = _mm_slli_epi64::<48>(a);
+            // Shift right by (3-to) words.
+            let shift = _mm_cvtsi32_si128(16 * i32::from(3 - u8::from(to)));
+            _mm_srl_epi64(a, shift)
         };
         Self(res)
     }

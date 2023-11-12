@@ -339,8 +339,9 @@ impl Variables4x4x9 {
         if counts.any_gt(counts_target) {
             return Err(());
         }
-        let satisfied = counts.masks_eq(counts_target);
-        self.possible &= self.possible.replace(satisfied, self.asserted);
+        let fixed = counts.masks_eq(counts_target);
+        let impossible = fixed.and_not(self.asserted.into());
+        self.possible = self.possible.and_not_bits(impossible);
         Ok(())
     }
 
@@ -361,8 +362,9 @@ impl Variables4x4x9 {
         if !(ge_2.replace_last_row(ge_3)).is_all_empty() {
             return Err(());
         }
-        let satisfied = ge_1.replace_last_row(ge_2);
-        self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
+        let fixed = ge_1.replace_last_row(ge_2);
+        let impossible = fixed.and_not(self.asserted);
+        self.possible = self.possible.and_not(impossible);
         Ok(())
     }
 
@@ -383,8 +385,9 @@ impl Variables4x4x9 {
         if !(ge_2.replace_last_column(ge_3)).is_all_empty() {
             return Err(());
         }
-        let satisfied = ge_1.replace_last_column(ge_2);
-        self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
+        let fixed = ge_1.replace_last_row(ge_2);
+        let impossible = fixed.and_not(self.asserted);
+        self.possible = self.possible.and_not(impossible);
         Ok(())
     }
 
@@ -407,8 +410,9 @@ impl Variables4x4x9 {
         if counts.any_lt(counts_target) {
             return Err(());
         }
-        let satisfied = counts.masks_eq(counts_target);
-        self.asserted |= self.possible.pick(satisfied);
+        let fixed = counts.masks_eq(counts_target);
+        let required = self.possible.and_bits(fixed);
+        self.asserted |= required;
 
         Ok(())
     }
@@ -431,8 +435,9 @@ impl Variables4x4x9 {
         if ge_1.replace_last_row(ge_2) != all {
             return Err(());
         }
-        let not_satisfied = ge_2.replace_last_row(ge_3);
-        self.asserted |= self.possible.and_not(not_satisfied);
+        let not_fixed = ge_2.replace_last_row(ge_3);
+        let required = self.possible.and_not(not_fixed);
+        self.asserted |= required;
         Ok(())
     }
 
@@ -455,8 +460,9 @@ impl Variables4x4x9 {
         if ge_1.replace_last_column(ge_2) != all {
             return Err(());
         }
-        let not_satisfied = ge_2.replace_last_column(ge_3);
-        self.asserted |= self.possible.and_not(not_satisfied);
+        let not_fixed = ge_2.replace_last_row(ge_3);
+        let required = self.possible.and_not(not_fixed);
+        self.asserted |= required;
         Ok(())
     }
 
@@ -525,7 +531,8 @@ impl Variables4x4x9 {
         if !ge_3.is_all_empty() {
             return Err(());
         }
-        self.possible &= self.possible.and_not(ge_2.and_not(self.asserted));
+        let impossible = ge_2.and_not(self.asserted);
+        self.possible = self.possible.and_not(impossible);
 
         self.asserted_processed = self.asserted;
         Ok(())
@@ -545,7 +552,8 @@ impl Variables4x4x9 {
         if ge_2 != all {
             return Err(());
         }
-        self.asserted |= self.possible.and_not(ge_3);
+        let required = self.possible.and_not(ge_3);
+        self.asserted |= required;
 
         self.possible_processed = self.possible;
         Ok(())
@@ -564,7 +572,8 @@ impl Variables4x4x9 {
         if !ge_3.is_all_empty() {
             return Err(());
         }
-        self.possible &= self.possible.and_not(ge_2.and_not(self.asserted));
+        let impossible = ge_2.and_not(self.asserted);
+        self.possible = self.possible.and_not(impossible);
 
         self.asserted_processed = self.asserted;
         Ok(())
@@ -584,23 +593,26 @@ impl Variables4x4x9 {
         if ge_2 != all {
             return Err(());
         }
-        self.asserted |= self.possible.and_not(ge_3);
+        let required = self.possible.and_not(ge_3);
+        self.asserted |= required;
 
         self.possible_processed = self.possible;
         Ok(())
     }
 
     fn propagate_from_hband(&mut self, hband: &Self, big1: Small<3>) {
-        self.asserted |= hband.asserted.move_to_last_column(big1);
-        self.possible &= self
-            .possible
-            .replace_last_column(hband.possible.move_to_last_column(big1));
+        self.asserted |= hband.asserted.move_column(big1.into(), Small::new(3));
+        let impossible = Box4x4x16::all_bits()
+            .and_not(hband.possible.into())
+            .move_column(big1.into(), Small::new(3));
+        self.possible = self.possible.and_not_bits(impossible);
     }
 
     fn propagate_from_vband(&mut self, vband: &Self, big0: Small<3>) {
-        self.asserted |= vband.asserted.move_to_last_row(big0);
-        self.possible &= self
-            .possible
-            .replace_last_row(vband.possible.move_to_last_row(big0));
+        self.asserted |= vband.asserted.move_row(big0.into(), Small::new(3));
+        let impossible = Box4x4x16::all_bits()
+            .and_not(vband.possible.into())
+            .move_row(big0.into(), Small::new(3));
+        self.possible = self.possible.and_not_bits(impossible);
     }
 }

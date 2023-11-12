@@ -247,20 +247,23 @@ impl Simd16x16 {
         Self(unsafe { _mm256_permute4x64_epi64::<0b11_01_00_10>(self.0) })
     }
 
-    /// Move words [4*i..4*i+4] to the last 4 words. Other words become zero.
-    pub fn move_4_words_to_last(self, i: Small<3>) -> Self {
-        let a = Simd4x64::from(self).extract(i.into());
-        Simd4x64::zero().insert(Small::new(3), a).into()
+    /// Move words [4*from..4*from+4] to [4*to..4*to+4]. Other words become zero.
+    pub fn move_4_words(self, from: Small<4>, to: Small<4>) -> Self {
+        let a = Simd4x64::from(self).extract(from);
+        Simd4x64::zero().insert(to, a).into()
     }
 
-    /// Move words 4*n+i to 4*n+3. Other words become zero.
-    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+    /// Move words 4*n+from to 4*n+to. Other words become zero.
+    pub fn move_words_mod_4(self, from: Small<4>, to: Small<4>) -> Self {
         let res = unsafe {
-            // Shift right by 4*i.
-            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(i)));
+            // Shift right by from words
+            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(from)));
             let a = _mm256_srl_epi64(self.0, shift);
-            // Shift left by 48.
-            _mm256_slli_epi64::<48>(a)
+            // Shift left by 3 words.
+            let a = _mm256_slli_epi64::<48>(a);
+            // Shift right by (3 - to) words.
+            let shift = _mm_cvtsi32_si128(16 * i32::from(3 - u8::from(to)));
+            _mm256_srl_epi64(a, shift)
         };
         Self(res)
     }

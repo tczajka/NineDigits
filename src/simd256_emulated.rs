@@ -195,20 +195,17 @@ impl Simd16x16 {
         ])
     }
 
-    /// Move words [4*i..4*i+4] to the last 4 words. Other words become zero.
-    pub fn move_4_words_to_last(self, i: Small<3>) -> Self {
-        let a = Simd4x64::from(self).extract(i.into());
-        Self([
-            Simd8x16::zero(),
-            Simd8x16::from(Simd2x64::zero().insert(Small::new(1), a)),
-        ])
+    /// Move words [4*from..4*from+4] to [4*to..4*to+4]. Other words become zero.
+    pub fn move_4_words(self, from: Small<4>, to: Small<4>) -> Self {
+        let a = Simd4x64::from(self).extract(from);
+        Simd4x64::zero().insert(to, a).into()
     }
 
-    /// Move words 4*n+i to 4*n+3. Other words become zero.
-    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+    /// Move words 4*n+from to 4*n+to. Other words become zero.
+    pub fn move_words_mod_4(self, from: Small<4>, to: Small<4>) -> Self {
         Self([
-            self.0[0].move_words_to_3_mod_4(i),
-            self.0[1].move_words_to_3_mod_4(i),
+            self.0[0].move_words_mod_4(from, to),
+            self.0[1].move_words_mod_4(from, to),
         ])
     }
 }
@@ -221,5 +218,11 @@ impl Simd4x64 {
     pub fn extract(self, i: Small<4>) -> u64 {
         let (half, j): (Small<2>, Small<2>) = i.split();
         self.0[half].extract(j)
+    }
+
+    pub fn insert(mut self, i: Small<4>, val: u64) -> Self {
+        let (half, j): (Small<2>, Small<2>) = i.split();
+        self.0[half] = self.0[half].insert(j, val);
+        self
     }
 }

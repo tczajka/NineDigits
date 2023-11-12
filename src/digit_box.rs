@@ -25,6 +25,10 @@ impl Box4x4x16 {
         Self(Simd16x16::fill(x))
     }
 
+    pub fn all_bits() -> Self {
+        Self::fill(0xffff)
+    }
+
     pub fn fill_rows(row: [u16; 4]) -> Self {
         let val: u64 = unsafe { mem::transmute(row) };
         Self(Simd4x64::fill(val).into())
@@ -92,14 +96,14 @@ impl Box4x4x16 {
         Self(self.0.rotate_first_12_words_4())
     }
 
-    /// Move a row to the last row. Other rows become zero.
-    pub fn move_to_last_row(self, y: Small<3>) -> Self {
-        Self(self.0.move_4_words_to_last(y))
+    /// Move a row to another row. Other rows become zero.
+    pub fn move_row(self, from: Small<4>, to: Small<4>) -> Self {
+        Self(self.0.move_4_words(from, to))
     }
 
-    /// Move a column to the last column. Other columns become zero.
-    pub fn move_to_last_column(self, x: Small<3>) -> Self {
-        Self(self.0.move_words_to_3_mod_4(x))
+    /// Move a column to another column. Other columns become zero.
+    pub fn move_column(self, from: Small<4>, to: Small<4>) -> Self {
+        Self(self.0.move_words_mod_4(from, to))
     }
 }
 
@@ -222,6 +226,10 @@ impl DigitBox {
         self.0.clear_bit(y, x, Small::<9>::from(digit).into());
     }
 
+    pub fn and_not_bits(self, other: Box4x4x16) -> Self {
+        Self(self.0.and_not(other))
+    }
+
     pub fn and_not(self, other: Self) -> Self {
         Self(self.0.and_not(other.0))
     }
@@ -235,8 +243,7 @@ impl DigitBox {
         self.0.masks_eq(other.0)
     }
 
-    /// mask contains 0xffff for entries to pick.
-    pub fn pick(self, mask: Box4x4x16) -> Self {
+    pub fn and_bits(self, mask: Box4x4x16) -> Self {
         Self(self.0 & mask)
     }
 
@@ -273,14 +280,14 @@ impl DigitBox {
         Self(self.0.rotate_first_3_down())
     }
 
-    /// Move a row to the last row. Other rows become empty.
-    pub fn move_to_last_row(self, y: Small<3>) -> Self {
-        Self(self.0.move_to_last_row(y))
+    /// Move a row to another row. Other rows become empty.
+    pub fn move_row(self, from: Small<4>, to: Small<4>) -> Self {
+        Self(self.0.move_row(from, to))
     }
 
-    /// Move a column to the last column. Other columns become empty.
-    pub fn move_to_last_column(self, x: Small<3>) -> Self {
-        Self(self.0.move_to_last_column(x))
+    /// Move a column to another column. Other columns become empty.
+    pub fn move_column(self, from: Small<4>, to: Small<4>) -> Self {
+        Self(self.0.move_column(from, to))
     }
 }
 
@@ -297,6 +304,12 @@ impl From<DigitBox> for [[DigitSet; 4]; 4] {
         let x: [[u16; 4]; 4] = x.0.into();
         // SAFETY: DigitSet is repr(transparent) over u16.
         unsafe { mem::transmute(x) }
+    }
+}
+
+impl From<DigitBox> for Box4x4x16 {
+    fn from(x: DigitBox) -> Self {
+        x.0
     }
 }
 

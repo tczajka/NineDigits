@@ -460,18 +460,12 @@ impl Variables4x4x9 {
         Ok(())
     }
 
-    fn propagate_to_hband(&mut self, hband: &mut Self, big1: Small<3>) {
-        hband.asserted |= self.asserted.move_to_last_column(big1);
-        hband.possible &= hband
-            .possible
-            .replace_last_column(self.possible.move_to_last_column(big1));
+    fn propagate_to_hband(&self, hband: &mut Self, big1: Small<3>) {
+        todo!()
     }
 
-    fn propagate_to_vband(&mut self, vband: &mut Self, big0: Small<3>) {
-        vband.asserted |= self.asserted.move_to_last_row(big0);
-        vband.possible &= vband
-            .possible
-            .replace_last_row(self.possible.move_to_last_column(big0));
+    fn propagate_to_vband(&self, vband: &mut Self, big0: Small<3>) {
+        todo!()
     }
 
     // Returns whether something changed.
@@ -596,11 +590,17 @@ impl Variables4x4x9 {
         Ok(())
     }
 
-    fn propagate_from_hband(&mut self, hband: &mut Self, big1: Small<3>) {
-        todo!()
+    fn propagate_from_hband(&mut self, hband: &Self, big1: Small<3>) {
+        self.asserted |= hband.asserted.move_to_last_column(big1);
+        self.possible &= self
+            .possible
+            .replace_last_column(hband.possible.move_to_last_column(big1));
     }
 
-    fn propagate_from_vband(&mut self, vband: &mut Self, big0: Small<3>) {
-        todo!()
+    fn propagate_from_vband(&mut self, vband: &Self, big0: Small<3>) {
+        self.asserted |= vband.asserted.move_to_last_row(big0);
+        self.possible &= self
+            .possible
+            .replace_last_row(vband.possible.move_to_last_row(big0));
     }
 }

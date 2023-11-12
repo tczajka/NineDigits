@@ -21,16 +21,21 @@ use std::arch::x86_64::{
     _mm_blend_epi16,
     _mm_cmpeq_epi16,
     _mm_cmplt_epi16,
+    _mm_cvtsi32_si128,
+    _mm_extract_epi64,
+    _mm_insert_epi64,
     _mm_loadu_si128,
     _mm_set1_epi16,
     _mm_set1_epi64x,
     _mm_setr_epi8,
     _mm_shuffle_epi32,
     _mm_slli_epi32,
+    _mm_slli_epi64,
     _mm_srli_epi16,
     _mm_srli_epi32,
     _mm_or_si128,
     _mm_setzero_si128,
+    _mm_srl_epi64,
     _mm_storeu_si128,
     _mm_unpackhi_epi64,
     _mm_unpacklo_epi64,
@@ -252,6 +257,18 @@ impl Simd8x16 {
     pub fn shift_words_minus_4_with_top(self, other: Self) -> Self {
         Self(unsafe { _mm_alignr_epi8::<8>(other.0, self.0) })
     }
+
+    /// Move words 4*n+i to 4*n+3. Other words become zero.
+    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+        let res = unsafe {
+            // Shift right by 16*i.
+            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(i)));
+            let a = _mm_srl_epi64(self.0, shift);
+            // Shift left by 48.
+            _mm_slli_epi64::<48>(a)
+        };
+        Self(res)
+    }
 }
 
 impl Simd4x32 {
@@ -304,11 +321,31 @@ impl Simd2x64 {
     pub fn fill(x: u64) -> Self {
         Self(unsafe { _mm_set1_epi64x(x as i64) })
     }
+
+    pub fn extract(self, index: Small<2>) -> u64 {
+        let res = unsafe {
+            match u8::from(index) {
+                0 => _mm_extract_epi64::<0>(self.0),
+                1 => _mm_extract_epi64::<1>(self.0),
+                _ => unreachable!(),
+            }
+        };
+        res as u64
+    }
+
+    pub fn insert(self, index: Small<2>, val: u64) -> Self {
+        let res = unsafe {
+            match u8::from(index) {
+                0 => _mm_insert_epi64::<0>(self.0, val as i64),
+                1 => _mm_insert_epi64::<1>(self.0, val as i64),
+                _ => unreachable!(),
+            }
+        };
+        Self(res)
+    }
 }
 
 fn single_bit_128(bit: Small<128>) -> __m128i {
     let (half, b): (Small<2>, Small<64>) = bit.split();
-    let mut val = [0u64; 2];
-    val[half] = 1 << u8::from(b);
-    Simd2x64::from(val).0
+    Simd2x64::zero().insert(half, 1 << u8::from(b)).0
 }

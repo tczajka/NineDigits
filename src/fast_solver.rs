@@ -441,10 +441,16 @@ impl Variables4x4x9 {
     }
 
     fn propagate_to_hband(&mut self, hband: &mut Self, big1: Small<3>) {
-        todo!()
+        hband.asserted |= self.asserted.move_to_last_column(big1);
+        hband.possible &= hband
+            .possible
+            .replace_last_column(self.possible.move_to_last_column(big1));
     }
 
     fn propagate_to_vband(&mut self, vband: &mut Self, big0: Small<3>) {
-        todo!()
+        vband.asserted |= self.asserted.move_to_last_row(big0);
+        vband.possible &= vband
+            .possible
+            .replace_last_row(self.possible.move_to_last_column(big0));
     }
 }

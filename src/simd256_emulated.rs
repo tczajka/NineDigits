@@ -194,10 +194,32 @@ impl Simd16x16 {
             self.0[1].replace_bottom_4_words_with_top(self.0[0]),
         ])
     }
+
+    /// Move words [4*i..4*i+4] to the last 4 words. Other words become zero.
+    pub fn move_4_words_to_last(self, i: Small<3>) -> Self {
+        let a = Simd4x64::from(self).extract(i.into());
+        Self([
+            Simd8x16::zero(),
+            Simd8x16::from(Simd2x64::zero().insert(Small::new(1), a)),
+        ])
+    }
+
+    /// Move words 4*n+i to 4*n+3. Other words become zero.
+    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+        Self([
+            self.0[0].move_words_to_3_mod_4(i),
+            self.0[1].move_words_to_3_mod_4(i),
+        ])
+    }
 }
 
 impl Simd4x64 {
     pub fn fill(x: u64) -> Self {
         Self([Simd2x64::fill(x), Simd2x64::fill(x)])
+    }
+
+    pub fn extract(self, i: Small<4>) -> u64 {
+        let (half, j): (Small<2>, Small<2>) = i.split();
+        self.0[half].extract(j)
     }
 }

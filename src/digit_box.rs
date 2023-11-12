@@ -91,6 +91,16 @@ impl Box4x4x16 {
     pub fn rotate_first_3_down(self) -> Self {
         Self(self.0.rotate_first_12_words_4())
     }
+
+    /// Move a row to the last row. Other rows become zero.
+    pub fn move_to_last_row(self, y: Small<3>) -> Self {
+        Self(self.0.move_4_words_to_last(y))
+    }
+
+    /// Move a column to the last column. Other columns become zero.
+    pub fn move_to_last_column(self, x: Small<3>) -> Self {
+        Self(self.0.move_words_to_3_mod_4(x))
+    }
 }
 
 impl From<[[u16; 4]; 4]> for Box4x4x16 {
@@ -251,6 +261,16 @@ impl DigitBox {
     /// Rotate first three rows down by 1.
     pub fn rotate_first_3_down(self) -> Self {
         Self(self.0.rotate_first_3_down())
+    }
+
+    /// Move a row to the last row. Other rows become empty.
+    pub fn move_to_last_row(self, y: Small<3>) -> Self {
+        Self(self.0.move_to_last_row(y))
+    }
+
+    /// Move a column to the last column. Other columns become empty.
+    pub fn move_to_last_column(self, x: Small<3>) -> Self {
+        Self(self.0.move_to_last_column(x))
     }
 }
 

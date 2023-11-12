@@ -4,8 +4,14 @@ use std::{
 };
 #[rustfmt::skip]
 use std::arch::x86_64::{
-    __m256i,
+    // SSE2
+    _mm_cvtsi32_si128,
     _mm_setr_epi8,
+    // AVX
+    _mm256_extract_epi64,
+    _mm256_insert_epi64,
+    // AVX2
+    __m256i,
     _mm256_add_epi16,
     _mm256_and_si256,
     _mm256_andnot_si256,
@@ -22,6 +28,8 @@ use std::arch::x86_64::{
     _mm256_setr_m128i,
     _mm256_setzero_si256,
     _mm256_shuffle_epi8,
+    _mm256_slli_epi64,
+    _mm256_srl_epi64,
     _mm256_srli_epi16,
     _mm256_storeu_si256,
     _mm256_testz_si256,
@@ -238,17 +246,59 @@ impl Simd16x16 {
     pub fn rotate_first_12_words_4(self) -> Self {
         Self(unsafe { _mm256_permute4x64_epi64::<0b11_01_00_10>(self.0) })
     }
+
+    /// Move words [4*i..4*i+4] to the last 4 words. Other words become zero.
+    pub fn move_4_words_to_last(self, i: Small<3>) -> Self {
+        let a = Simd4x64::from(self).extract(i.into());
+        Simd4x64::zero().insert(Small::new(3), a).into()
+    }
+
+    /// Move words 4*n+i to 4*n+3. Other words become zero.
+    pub fn move_words_to_3_mod_4(self, i: Small<3>) -> Self {
+        let res = unsafe {
+            // Shift right by 4*i.
+            let shift = _mm_cvtsi32_si128(16 * i32::from(u8::from(i)));
+            let a = _mm256_srl_epi64(self.0, shift);
+            // Shift left by 48.
+            _mm256_slli_epi64::<48>(a)
+        };
+        Self(res)
+    }
 }
 
 impl Simd4x64 {
     pub fn fill(x: u64) -> Self {
         Self(unsafe { _mm256_set1_epi64x(x as i64) })
     }
+
+    pub fn extract(self, index: Small<4>) -> u64 {
+        let res = unsafe {
+            match u8::from(index) {
+                0 => _mm256_extract_epi64::<0>(self.0),
+                1 => _mm256_extract_epi64::<1>(self.0),
+                2 => _mm256_extract_epi64::<2>(self.0),
+                3 => _mm256_extract_epi64::<3>(self.0),
+                _ => unreachable!(),
+            }
+        };
+        res as u64
+    }
+
+    pub fn insert(self, index: Small<4>, val: u64) -> Self {
+        let res = unsafe {
+            match u8::from(index) {
+                0 => _mm256_insert_epi64::<0>(self.0, val as i64),
+                1 => _mm256_insert_epi64::<1>(self.0, val as i64),
+                2 => _mm256_insert_epi64::<2>(self.0, val as i64),
+                3 => _mm256_insert_epi64::<3>(self.0, val as i64),
+                _ => unreachable!(),
+            }
+        };
+        Self(res)
+    }
 }
 
 fn single_bit_256(bit: Small<256>) -> __m256i {
     let (i, b): (Small<4>, Small<64>) = bit.split();
-    let mut val = [0u64; 4];
-    val[i] = 1 << u8::from(b);
-    Simd4x64::from(val).0
+    Simd4x64::zero().insert(i, 1 << u8::from(b)).0
 }

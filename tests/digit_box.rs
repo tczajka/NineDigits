@@ -252,14 +252,30 @@ fn test_replace() {
     ]
     .into();
 
-    let expected: DigitBox = "7|2|7|3
+    let expected_replace: DigitBox = "7|2|7|3
 4|8|4|8
 9|3|9|3
 3|5|3|5"
         .parse()
         .unwrap();
 
-    assert_eq!(a.replace(mask, b), expected);
+    let expected_replace_last_row: DigitBox = "1|2|3|3
+4|4|4|4
+3|3|3|3
+3|34|3|3"
+        .parse()
+        .unwrap();
+
+    let expected_replace_last_column: DigitBox = "1|2|3|7
+4|4|4|8
+3|3|3|9
+5|5|5|3"
+        .parse()
+        .unwrap();
+
+    assert_eq!(a.replace(mask, b), expected_replace);
+    assert_eq!(a.replace_last_row(b), expected_replace_last_row);
+    assert_eq!(a.replace_last_column(b), expected_replace_last_column);
 }
 
 #[test]
@@ -285,6 +301,22 @@ fn test_rotate() {
         .parse()
         .unwrap();
 
+    let expected_first_3_right: DigitBox = "3|1|2|4
+6|4|5|7
+12|8|9|13
+16|14|15|17"
+        .parse()
+        .unwrap();
+
+    let expected_first_3_down: DigitBox = "8|9|12|13
+1|2|3|4
+4|5|6|7
+14|15|16|17"
+        .parse()
+        .unwrap();
+
     assert_eq!(a.rotate_right(), expected_right);
     assert_eq!(a.rotate_down(), expected_down);
+    assert_eq!(a.rotate_first_3_right(), expected_first_3_right);
+    assert_eq!(a.rotate_first_3_down(), expected_first_3_down);
 }

@@ -337,17 +337,11 @@ impl Variables4x4x9 {
         ge_3 |= rot & ge_2;
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
-        let first_three_rows: Box4x4x16 = [
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0, 0, 0, 0],
-        ]
-        .into();
-        if !(ge_3.replace(first_three_rows, ge_2)).is_all_empty() {
+
+        if !(ge_2.replace_last_row(ge_3)).is_all_empty() {
             return Err(());
         }
-        let satisfied = ge_2.replace(first_three_rows, ge_1);
+        let satisfied = ge_1.replace_last_row(ge_2);
         self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
         Ok(())
     }
@@ -366,12 +360,10 @@ impl Variables4x4x9 {
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
 
-        let first_three_columns = Box4x4x16::fill_rows([0xffff, 0xffff, 0xffff, 0]);
-
-        if !(ge_3.replace(first_three_columns, ge_2)).is_all_empty() {
+        if !(ge_2.replace_last_column(ge_3)).is_all_empty() {
             return Err(());
         }
-        let satisfied = ge_2.replace(first_three_columns, ge_1);
+        let satisfied = ge_1.replace_last_column(ge_2);
         self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
         Ok(())
     }
@@ -415,19 +407,11 @@ impl Variables4x4x9 {
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
 
-        let first_three_rows: Box4x4x16 = [
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0xffff, 0xffff, 0xffff, 0xffff],
-            [0, 0, 0, 0],
-        ]
-        .into();
         let all = DigitBox::fill(DigitSet::all());
-
-        if ge_2.replace(first_three_rows, ge_1) != all {
+        if ge_1.replace_last_row(ge_2) != all {
             return Err(());
         }
-        let not_satisfied = ge_3.replace(first_three_rows, ge_2);
+        let not_satisfied = ge_2.replace_last_row(ge_3);
         self.asserted |= self.possible.and_not(not_satisfied);
         Ok(())
     }
@@ -446,13 +430,12 @@ impl Variables4x4x9 {
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
 
-        let first_three_columns = Box4x4x16::fill_rows([0xffff, 0xffff, 0xffff, 0]);
         let all = DigitBox::fill(DigitSet::all());
 
-        if ge_2.replace(first_three_columns, ge_1) != all {
+        if ge_1.replace_last_column(ge_2) != all {
             return Err(());
         }
-        let not_satisfied = ge_3.replace(first_three_columns, ge_2);
+        let not_satisfied = ge_2.replace_last_column(ge_3);
         self.asserted |= self.possible.and_not(not_satisfied);
         Ok(())
     }

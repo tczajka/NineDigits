@@ -64,6 +64,14 @@ impl Box4x4x16 {
         Self(self.0.replace(mask.0, other.0))
     }
 
+    pub fn replace_last_row(self, other: Self) -> Self {
+        Self(self.0.replace_top_4_words(other.0))
+    }
+
+    pub fn replace_last_column(self, other: Self) -> Self {
+        Self(self.0.replace_words_3_mod_4(other.0))
+    }
+
     /// Rotate right by 1.
     pub fn rotate_right(self) -> Self {
         Self(self.0.rotate_words_1_mod_4())
@@ -72,6 +80,16 @@ impl Box4x4x16 {
     /// Rotate down by 1.
     pub fn rotate_down(self) -> Self {
         Self(self.0.rotate_words_4())
+    }
+
+    /// Rotate first three columns right by 1.
+    pub fn rotate_first_3_right(self) -> Self {
+        Self(self.0.rotate_first_3_words_1_mod_4())
+    }
+
+    /// Rotate first three rows down by 1.
+    pub fn rotate_first_3_down(self) -> Self {
+        Self(self.0.rotate_first_12_words_4())
     }
 }
 
@@ -207,6 +225,14 @@ impl DigitBox {
         Self(self.0.replace(mask, other.0))
     }
 
+    pub fn replace_last_row(self, other: Self) -> Self {
+        Self(self.0.replace_last_row(other.0))
+    }
+
+    pub fn replace_last_column(self, other: Self) -> Self {
+        Self(self.0.replace_last_column(other.0))
+    }
+
     /// Rotate right by 1.
     pub fn rotate_right(self) -> Self {
         Self(self.0.rotate_right())
@@ -215,6 +241,16 @@ impl DigitBox {
     /// Rotate right by 1.
     pub fn rotate_down(self) -> Self {
         Self(self.0.rotate_down())
+    }
+
+    /// Rotate first three columns right by 1.
+    pub fn rotate_first_3_right(self) -> Self {
+        Self(self.0.rotate_first_3_right())
+    }
+
+    /// Rotate first three rows down by 1.
+    pub fn rotate_first_3_down(self) -> Self {
+        Self(self.0.rotate_first_3_down())
     }
 }
 

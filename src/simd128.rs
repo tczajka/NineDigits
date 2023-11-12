@@ -18,7 +18,7 @@ use std::arch::x86_64::{
     _mm_add_epi32,
     _mm_and_si128,
     _mm_andnot_si128,
-    _mm_blendv_epi8,
+    _mm_blend_epi16,
     _mm_cmpeq_epi16,
     _mm_cmplt_epi16,
     _mm_loadu_si128,
@@ -32,11 +32,14 @@ use std::arch::x86_64::{
     _mm_or_si128,
     _mm_setzero_si128,
     _mm_storeu_si128,
+    _mm_unpackhi_epi64,
+    _mm_unpacklo_epi64,
     _mm_xor_si128,
     // SSSE3
     _mm_alignr_epi8,
     _mm_shuffle_epi8,
     // SSE4.1
+    _mm_blendv_epi8,
     _mm_test_all_zeros,
 };
 use crate::small::{CartesianProduct, Small};
@@ -209,10 +212,37 @@ impl Simd8x16 {
         Self(unsafe { _mm_blendv_epi8(self.0, other.0, mask.0) })
     }
 
+    pub fn replace_top_4_words(self, other: Self) -> Self {
+        Self(unsafe { _mm_blend_epi16::<0b11110000>(self.0, other.0) })
+    }
+
+    pub fn replace_words_3_mod_4(self, other: Self) -> Self {
+        Self(unsafe { _mm_blend_epi16::<0b10001000>(self.0, other.0) })
+    }
+
+    /// [self[0..4], other[0..4]]
+    pub fn replace_top_4_words_with_bottom(self, other: Self) -> Self {
+        Self(unsafe { _mm_unpacklo_epi64(self.0, other.0) })
+    }
+
+    /// [other[4..8], self[4..8]]
+    pub fn replace_bottom_4_words_with_top(self, other: Self) -> Self {
+        Self(unsafe { _mm_unpackhi_epi64(other.0, self.0) })
+    }
+
     /// Rotate every 4 words by 1.
     pub fn rotate_words_1_mod_4(self) -> Self {
         let res = unsafe {
             let shuffle_table = _mm_setr_epi8(6, 7, 0, 1, 2, 3, 4, 5, 14, 15, 8, 9, 10, 11, 12, 13);
+            _mm_shuffle_epi8(self.0, shuffle_table)
+        };
+        Self(res)
+    }
+
+    /// Rotate first three of every 4 words by 1.
+    pub fn rotate_first_3_words_1_mod_4(self) -> Self {
+        let res = unsafe {
+            let shuffle_table = _mm_setr_epi8(4, 5, 0, 1, 2, 3, 6, 7, 12, 13, 8, 9, 10, 11, 14, 15);
             _mm_shuffle_epi8(self.0, shuffle_table)
         };
         Self(res)

@@ -9,6 +9,8 @@ use std::arch::x86_64::{
     _mm256_add_epi16,
     _mm256_and_si256,
     _mm256_andnot_si256,
+    _mm256_blend_epi32,
+    _mm256_blend_epi16,
     _mm256_blendv_epi8,
     _mm256_cmpeq_epi16,
     _mm256_cmpgt_epi16,
@@ -197,6 +199,14 @@ impl Simd16x16 {
         Self(unsafe { _mm256_blendv_epi8(self.0, other.0, mask.0) })
     }
 
+    pub fn replace_top_4_words(self, other: Self) -> Self {
+        Self(unsafe { _mm256_blend_epi32::<0b11_00_00_00>(self.0, other.0) })
+    }
+
+    pub fn replace_words_3_mod_4(self, other: Self) -> Self {
+        Self(unsafe { _mm256_blend_epi16::<0b10001000>(self.0, other.0) })
+    }
+
     /// Rotate every 4 words by 1.
     pub fn rotate_words_1_mod_4(self) -> Self {
         let res = unsafe {
@@ -211,6 +221,22 @@ impl Simd16x16 {
     /// Rotate words by 4.
     pub fn rotate_words_4(self) -> Self {
         Self(unsafe { _mm256_permute4x64_epi64::<0b10_01_00_11>(self.0) })
+    }
+
+    /// Rotate first three of every 4 words by 1.
+    pub fn rotate_first_3_words_1_mod_4(self) -> Self {
+        let res = unsafe {
+            let shuffle_table_128 =
+                _mm_setr_epi8(4, 5, 0, 1, 2, 3, 6, 7, 12, 13, 8, 9, 10, 11, 14, 15);
+            let shuffle_table = _mm256_setr_m128i(shuffle_table_128, shuffle_table_128);
+            _mm256_shuffle_epi8(self.0, shuffle_table)
+        };
+        Self(res)
+    }
+
+    /// Rotate first 12 words by 4.
+    pub fn rotate_first_12_words_4(self) -> Self {
+        Self(unsafe { _mm256_permute4x64_epi64::<0b11_01_00_10>(self.0) })
     }
 }
 

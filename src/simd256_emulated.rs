@@ -152,6 +152,17 @@ impl Simd16x16 {
         ])
     }
 
+    pub fn replace_top_4_words(self, other: Self) -> Self {
+        Self([self.0[0], self.0[1].replace_top_4_words(other.0[1])])
+    }
+
+    pub fn replace_words_3_mod_4(self, other: Self) -> Self {
+        Self([
+            self.0[0].replace_words_3_mod_4(other.0[0]),
+            self.0[1].replace_words_3_mod_4(other.0[1]),
+        ])
+    }
+
     /// Rotate every 4 words by 1.
     pub fn rotate_words_1_mod_4(self) -> Self {
         Self([
@@ -165,6 +176,22 @@ impl Simd16x16 {
         Self([
             self.0[1].shift_words_minus_4_with_top(self.0[0]),
             self.0[0].shift_words_minus_4_with_top(self.0[1]),
+        ])
+    }
+
+    /// Rotate first three of every 4 words by 1.
+    pub fn rotate_first_3_words_1_mod_4(self) -> Self {
+        Self([
+            self.0[0].rotate_first_3_words_1_mod_4(),
+            self.0[1].rotate_first_3_words_1_mod_4(),
+        ])
+    }
+
+    /// Rotate first 12 words by 4.
+    pub fn rotate_first_12_words_4(self) -> Self {
+        Self([
+            self.0[1].replace_top_4_words_with_bottom(self.0[0]),
+            self.0[1].replace_bottom_4_words_with_top(self.0[0]),
         ])
     }
 }

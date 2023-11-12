@@ -32,7 +32,7 @@ impl<const L: usize, T: Bits> SmallSet<L, T> {
         if self == Self::EMPTY {
             return None;
         }
-        let val: u8 = self.0.trailing_zeros().try_into().unwrap();
+        let val: u8 = self.0.trailing_zeros();
         // SAFETY: `val` is in the range `0..L` because `self` is not empty.
         Some(unsafe { Small::<L>::new_unchecked(val) })
     }

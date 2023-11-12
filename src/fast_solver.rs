@@ -219,7 +219,7 @@ impl SearchState {
             for big1 in Small::<3>::all() {
                 let box_coord = VariableBigCoord::Box(big0, big1);
                 let box_index = box_coord.encode();
-                variables0[usize::from(box_index)].propagate_from_hband(&mut variables1[0], big1);
+                variables0[usize::from(box_index)].propagate_from_hband(&variables1[0], big1);
                 self.queue.push(box_coord);
             }
         }
@@ -234,7 +234,7 @@ impl SearchState {
             for big0 in Small::<3>::all() {
                 let box_coord = VariableBigCoord::Box(big0, big1);
                 let box_index = box_coord.encode();
-                variables0[usize::from(box_index)].propagate_from_vband(&mut variables1[0], big0);
+                variables0[usize::from(box_index)].propagate_from_vband(&variables1[0], big0);
                 self.queue.push(box_coord);
             }
         }

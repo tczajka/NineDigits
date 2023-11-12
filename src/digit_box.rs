@@ -162,9 +162,9 @@ impl BitXorAssign for Box4x4x16 {
 impl Display for Box4x4x16 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let a: [[u16; 4]; 4] = (*self).into();
-        for y in 0..4 {
-            for x in 0..4 {
-                write!(f, "{}", a[y][x])?;
+        for row in a {
+            for (x, val) in row.into_iter().enumerate() {
+                write!(f, "{}", val)?;
                 if x < 3 {
                     write!(f, "|")?;
                 }
@@ -345,9 +345,9 @@ impl BitXorAssign for DigitBox {
 impl Display for DigitBox {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let a: [[DigitSet; 4]; 4] = (*self).into();
-        for y in 0..4 {
-            for x in 0..4 {
-                write!(f, "{}", a[y][x])?;
+        for row in a {
+            for (x, val) in row.into_iter().enumerate() {
+                write!(f, "{}", val)?;
                 if x < 3 {
                     write!(f, "|")?;
                 }
@@ -373,13 +373,13 @@ impl FromStr for DigitBox {
         if lines.len() != 4 {
             return Err(InvalidInput);
         }
-        for y in 0..4 {
-            let boxes: Vec<&str> = lines[y].split('|').collect();
+        for (y, line) in lines.into_iter().enumerate() {
+            let boxes: Vec<&str> = line.split('|').collect();
             if boxes.len() != 4 {
                 return Err(InvalidInput);
             }
-            for x in 0..4 {
-                a[y][x] = boxes[x].parse()?;
+            for (x, entry) in boxes.into_iter().enumerate() {
+                a[y][x] = entry.parse()?;
             }
         }
         Ok(a.into())

@@ -186,6 +186,7 @@ impl SearchState {
         Ok(())
     }
 
+    /// Simplify a regular box.
     fn simplify_box(&mut self, big0: Small<3>, big1: Small<3>) -> Result<(), ()> {
         let box_coord = VariableBigCoord::Box(big0, big1);
         let box_index = box_coord.encode();
@@ -210,14 +211,17 @@ impl SearchState {
         Ok(())
     }
 
+    /// Simplify an hband box.
     fn simplify_hband(&mut self, big0: Small<3>) -> Result<(), ()> {
         todo!()
     }
 
+    /// Simplify a vband box.
     fn simplify_vband(&mut self, big1: Small<3>) -> Result<(), ()> {
         todo!()
     }
 
+    /// Branch and return a second state.
     fn branch(&mut self) -> Self {
         todo!()
     }
@@ -298,26 +302,91 @@ impl Variables4x4x9 {
         Ok(changed)
     }
 
+    /// Process `self.asserted` and update `self.possible` for a regular box.
     fn process_box_asserted(&mut self) -> Result<(), ()> {
-        // Equations A and B.
+        self.process_box_asserted_squares()?;
+        self.process_box_asserted_horizontal()?;
+        self.process_box_asserted_vertical()?;
+        self.asserted_processed = self.asserted;
+        Ok(())
+    }
+
+    /// Equation A and B: sum in each square is 1 or 6.
+    fn process_box_asserted_squares(&mut self) -> Result<(), ()> {
         let counts_target =
             Box4x4x16::from([[1, 1, 1, 6], [1, 1, 1, 6], [1, 1, 1, 6], [6, 6, 6, 0]]);
-
         let counts = self.asserted.counts();
         if counts.any_gt(counts_target) {
             return Err(());
         }
         let satisfied = counts.masks_eq(counts_target);
         self.possible &= self.possible.replace(satisfied, self.asserted);
-
-        // TODO: Equations C and D.
-
-        self.asserted_processed = self.asserted;
-
         Ok(())
     }
 
+    /// Equation C and D horizontal: sum in row is 1 or 2.
+    fn process_box_asserted_horizontal(&mut self) -> Result<(), ()> {
+        let mut rot = self.asserted.rotate_right();
+        let mut ge_2 = self.asserted & rot;
+        let mut ge_1 = self.asserted | rot;
+        rot = rot.rotate_right();
+        let mut ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+        rot = rot.rotate_right();
+        ge_3 |= rot & ge_2;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+        let first_three_rows: Box4x4x16 = [
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0, 0, 0, 0],
+        ]
+        .into();
+        if !(ge_3.replace(first_three_rows, ge_2)).is_all_empty() {
+            return Err(());
+        }
+        let satisfied = ge_2.replace(first_three_rows, ge_1);
+        self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
+        Ok(())
+    }
+
+    /// Equation C and D vertical: sum in column is 1 or 2.
+    fn process_box_asserted_vertical(&mut self) -> Result<(), ()> {
+        let mut rot = self.asserted.rotate_down();
+        let mut ge_2 = self.asserted & rot;
+        let mut ge_1 = self.asserted | rot;
+        rot = rot.rotate_down();
+        let mut ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+        rot = rot.rotate_down();
+        ge_3 |= rot & ge_2;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+
+        let first_three_columns = Box4x4x16::fill_rows([0xffff, 0xffff, 0xffff, 0]);
+
+        if !(ge_3.replace(first_three_columns, ge_2)).is_all_empty() {
+            return Err(());
+        }
+        let satisfied = ge_2.replace(first_three_columns, ge_1);
+        self.possible = self.possible.and_not(satisfied.and_not(self.asserted));
+        Ok(())
+    }
+
+    /// Process `self.possible` and update `self.asserted` for a regular box.
     fn process_box_possible(&mut self) -> Result<(), ()> {
+        self.process_box_possible_squares()?;
+        self.process_box_possible_horizontal()?;
+        self.process_box_possible_vertical()?;
+        self.possible_processed = self.possible;
+        Ok(())
+    }
+
+    /// Equation A and B: sum in each square is 1 or 6.
+    fn process_box_possible_squares(&mut self) -> Result<(), ()> {
         // Equations A and B.
         let counts_target =
             Box4x4x16::from([[1, 1, 1, 6], [1, 1, 1, 6], [1, 1, 1, 6], [6, 6, 6, 0]]);
@@ -327,11 +396,64 @@ impl Variables4x4x9 {
             return Err(());
         }
         let satisfied = counts.masks_eq(counts_target);
-        self.asserted |= self.asserted.replace(satisfied, self.possible);
+        self.asserted |= self.possible.pick(satisfied);
 
-        // TODO: Equations C and D.
+        Ok(())
+    }
 
-        self.possible_processed = self.possible;
+    /// Equation C and D horizontal: sum in row is 1 or 2.
+    fn process_box_possible_horizontal(&mut self) -> Result<(), ()> {
+        let mut rot = self.possible.rotate_right();
+        let mut ge_2 = self.possible & rot;
+        let mut ge_1 = self.asserted | rot;
+        rot = rot.rotate_right();
+        let mut ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+        rot = rot.rotate_right();
+        ge_3 |= rot & ge_2;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+
+        let first_three_rows: Box4x4x16 = [
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0xffff, 0xffff, 0xffff, 0xffff],
+            [0, 0, 0, 0],
+        ]
+        .into();
+        let all = DigitBox::fill(DigitSet::all());
+
+        if ge_2.replace(first_three_rows, ge_1) != all {
+            return Err(());
+        }
+        let not_satisfied = ge_3.replace(first_three_rows, ge_2);
+        self.asserted |= self.possible.and_not(not_satisfied);
+        Ok(())
+    }
+
+    /// Equation C and D vertical: sum in column is 1 or 2.
+    fn process_box_possible_vertical(&mut self) -> Result<(), ()> {
+        let mut rot = self.possible.rotate_down();
+        let mut ge_2 = self.possible & rot;
+        let mut ge_1 = self.asserted | rot;
+        rot = rot.rotate_down();
+        let mut ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+        rot = rot.rotate_down();
+        ge_3 |= rot & ge_2;
+        ge_2 |= rot & ge_1;
+        ge_1 |= rot;
+
+        let first_three_columns = Box4x4x16::fill_rows([0xffff, 0xffff, 0xffff, 0]);
+        let all = DigitBox::fill(DigitSet::all());
+
+        if ge_2.replace(first_three_columns, ge_1) != all {
+            return Err(());
+        }
+        let not_satisfied = ge_3.replace(first_three_columns, ge_2);
+        self.asserted |= self.possible.and_not(not_satisfied);
         Ok(())
     }
 

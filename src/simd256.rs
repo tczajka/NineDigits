@@ -16,6 +16,7 @@ use std::arch::x86_64::{
     _mm256_or_si256,
     _mm256_permute4x64_epi64,
     _mm256_set1_epi16,
+    _mm256_set1_epi64x,
     _mm256_setr_m128i,
     _mm256_setzero_si256,
     _mm256_shuffle_epi8,
@@ -155,6 +156,10 @@ define_all_simd_256! {
 }
 
 impl Simd16x16 {
+    pub fn fill(x: u16) -> Self {
+        Self(unsafe { _mm256_set1_epi16(x as i16) })
+    }
+
     pub fn popcount_9(self) -> Self {
         let res = unsafe {
             let popcount_4_table_128 =
@@ -206,6 +211,12 @@ impl Simd16x16 {
     /// Rotate words by 4.
     pub fn rotate_words_4(self) -> Self {
         Self(unsafe { _mm256_permute4x64_epi64::<0b10_01_00_11>(self.0) })
+    }
+}
+
+impl Simd4x64 {
+    pub fn fill(x: u64) -> Self {
+        Self(unsafe { _mm256_set1_epi64x(x as i64) })
     }
 }
 

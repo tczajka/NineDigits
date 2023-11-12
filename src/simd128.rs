@@ -23,6 +23,7 @@ use std::arch::x86_64::{
     _mm_cmplt_epi16,
     _mm_loadu_si128,
     _mm_set1_epi16,
+    _mm_set1_epi64x,
     _mm_setr_epi8,
     _mm_shuffle_epi32,
     _mm_slli_epi32,
@@ -169,6 +170,10 @@ define_all_simd_128! {
 }
 
 impl Simd8x16 {
+    pub fn fill(x: u16) -> Self {
+        Self(unsafe { _mm_set1_epi16(x as i16) })
+    }
+
     /// Each element is replaced by popcount, under the assumption that inputs are 9-bit.
     pub fn popcount_9(self) -> Self {
         let res = unsafe {
@@ -262,6 +267,12 @@ impl Add for Simd4x32 {
 impl AddAssign for Simd4x32 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
+    }
+}
+
+impl Simd2x64 {
+    pub fn fill(x: u64) -> Self {
+        Self(unsafe { _mm_set1_epi64x(x as i64) })
     }
 }
 

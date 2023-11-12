@@ -124,6 +124,10 @@ define_all_simd_256! {
 }
 
 impl Simd16x16 {
+    pub fn fill(x: u16) -> Self {
+        Self([Simd8x16::fill(x), Simd8x16::fill(x)])
+    }
+
     pub fn popcount_9(self) -> Self {
         Self([self.0[0].popcount_9(), self.0[1].popcount_9()])
     }
@@ -162,5 +166,11 @@ impl Simd16x16 {
             self.0[1].shift_words_minus_4_with_top(self.0[0]),
             self.0[0].shift_words_minus_4_with_top(self.0[1]),
         ])
+    }
+}
+
+impl Simd4x64 {
+    pub fn fill(x: u64) -> Self {
+        Self([Simd2x64::fill(x), Simd2x64::fill(x)])
     }
 }

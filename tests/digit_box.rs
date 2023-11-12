@@ -1,6 +1,5 @@
 use sudoku_game::{
     digit_box::{Box4x4x16, DigitBox},
-    digit_set::DigitSet,
     small::Small,
 };
 
@@ -15,6 +14,46 @@ fn test_digit_box_parse_display() {
     let a: DigitBox = s.parse().unwrap();
 
     assert_eq!(a.to_string(), s);
+}
+
+#[test]
+fn test_digit_box_is_all_empty() {
+    assert!(DigitBox::empty().is_all_empty());
+
+    let a: DigitBox = "|||
+||9|
+|||
+|||"
+    .parse()
+    .unwrap();
+
+    assert!(!a.is_all_empty());
+}
+
+#[test]
+fn test_digit_box_fill() {
+    let a = DigitBox::fill("13".parse().unwrap());
+    let expected: DigitBox = "13|13|13|13
+13|13|13|13
+13|13|13|13
+13|13|13|13"
+        .parse()
+        .unwrap();
+    assert_eq!(a, expected);
+
+    let a = DigitBox::fill_rows([
+        "1".parse().unwrap(),
+        "2".parse().unwrap(),
+        "3".parse().unwrap(),
+        "4".parse().unwrap(),
+    ]);
+    let expected: DigitBox = "1|2|3|4
+1|2|3|4
+1|2|3|4
+1|2|3|4"
+        .parse()
+        .unwrap();
+    assert_eq!(a, expected);
 }
 
 #[test]
@@ -160,6 +199,33 @@ fn test_masks_eq() {
     .into();
 
     assert_eq!(a.masks_eq(b), expected);
+}
+
+#[test]
+fn test_pick() {
+    let a: DigitBox = "1|2|3|3
+4|4|4|4
+3|3|3|3
+5|5|5|5"
+        .parse()
+        .unwrap();
+
+    let mask: Box4x4x16 = [
+        [0xffff, 0, 0xffff, 0],
+        [0, 0xffff, 0, 0xffff],
+        [0xffff, 0, 0xffff, 0],
+        [0xffff, 0, 0xffff, 0],
+    ]
+    .into();
+
+    let expected: DigitBox = "1||3|
+|4||4
+3||3|
+5||5|"
+        .parse()
+        .unwrap();
+
+    assert_eq!(a.pick(mask), expected);
 }
 
 #[test]

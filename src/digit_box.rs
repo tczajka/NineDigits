@@ -2,7 +2,7 @@ use crate::{
     digit::Digit,
     digit_set::DigitSet,
     error::InvalidInput,
-    simd256::Simd16x16,
+    simd256::{Simd16x16, Simd4x64},
     small::{CartesianProduct, Small},
 };
 use std::{
@@ -19,6 +19,19 @@ pub struct Box4x4x16(Simd16x16);
 impl Box4x4x16 {
     pub fn zero() -> Self {
         Self(Simd16x16::zero())
+    }
+
+    pub fn fill(x: u16) -> Self {
+        Self(Simd16x16::fill(x))
+    }
+
+    pub fn fill_rows(row: [u16; 4]) -> Self {
+        let val: u64 = unsafe { mem::transmute(row) };
+        Self(Simd4x64::fill(val).into())
+    }
+
+    pub fn is_all_zero(self) -> bool {
+        self.0.is_all_zero()
     }
 
     pub fn set_bit(&mut self, y: Small<4>, x: Small<4>, bit: Small<16>) {
@@ -149,6 +162,20 @@ impl DigitBox {
         Self(Box4x4x16::zero())
     }
 
+    pub fn fill(x: DigitSet) -> Self {
+        let val: u16 = unsafe { mem::transmute(x) };
+        Self(Box4x4x16::fill(val))
+    }
+
+    pub fn fill_rows(row: [DigitSet; 4]) -> Self {
+        let val: [u16; 4] = unsafe { mem::transmute(row) };
+        Self(Box4x4x16::fill_rows(val))
+    }
+
+    pub fn is_all_empty(self) -> bool {
+        self.0.is_all_zero()
+    }
+
     pub fn set(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
         self.0.set_bit(y, x, Small::<9>::from(digit).into());
     }
@@ -168,6 +195,11 @@ impl DigitBox {
     /// Returns 0xffff for equal values, 0 otherwise.
     pub fn masks_eq(self, other: Self) -> Box4x4x16 {
         self.0.masks_eq(other.0)
+    }
+
+    /// mask contains 0xffff for entries to pick.
+    pub fn pick(self, mask: Box4x4x16) -> Self {
+        Self(self.0 & mask)
     }
 
     /// mask contains 0xffff for entries to replace.

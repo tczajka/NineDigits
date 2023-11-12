@@ -1,37 +1,38 @@
-/// variables[i][j][y][x][d]
-/// At most one of the four coordinates can be 3.
-/// variables[i][j][y][x]: x_ijyxd
-/// variables[i][j][y][3]: h_ijyd (horizontal triad, inverted)
-/// variables[i][j][3][x]: v_ijxd (vertical triad, inverted)
-/// variables[i][3][y][x]: h_ixyd (horizontal triad, inverted, copied)
-/// variables[3][j][y][x]: v_jyxd (vertical triad, inverted, copied)
-/// variables[i][j]: box
-/// variables[i][3]: horizontal band
-/// variables[3][j]: vertical band
-///
-/// Constraints:
-/// A (one digit per square):
-/// sum_d x_ijyx = 1
-///
-/// B (three digits per triad):
-/// sum_d h_ijyd = 6
-/// sum_d v_ijyd = 6
-///
-/// C (triad definitions)
-/// sum_x x_ijyxd + h_ijyd = 1
-/// sum_y x_ijyxd + v_ijyd = 1
-///
-/// D (one digit per box)
-/// sum_x v_jyxd = 2
-/// sum_y h_ixyd = 2
-///
-/// E (one digit per row/column)
-/// sum_i h_ijyd = 2
-/// sum_j v_ijyd = 2
-///
-/// Once a constraint is tight, `possible` and `asserted` will be set tight for that sum.
-/// If `asserted` is not a subset of `possible`, one of those sums will become out of bands.
-/// So no need to separately check whether `asserted` is a subset of `possible`.
+//! variables[i][j][y][x][d]
+//! At most one of the four coordinates can be 3.
+//! variables[i][j][y][x]: x_ijyxd
+//! variables[i][j][y][3]: h_ijyd (horizontal triad, inverted)
+//! variables[i][j][3][x]: v_ijxd (vertical triad, inverted)
+//! variables[i][3][y][x]: h_ixyd (horizontal triad, inverted, copied)
+//! variables[3][j][y][x]: v_jyxd (vertical triad, inverted, copied)
+//! variables[i][j]: box
+//! variables[i][3]: horizontal band
+//! variables[3][j]: vertical band
+//!
+//! Constraints:
+//! A (one digit per square):
+//! sum_d x_ijyx = 1
+//!
+//! B (three digits per triad):
+//! sum_d h_ijyd = 6
+//! sum_d v_ijyd = 6
+//!
+//! C (triad definitions)
+//! sum_x x_ijyxd + h_ijyd = 1
+//! sum_y x_ijyxd + v_ijyd = 1
+//!
+//! D (one digit per box)
+//! sum_x v_jyxd = 2
+//! sum_y h_ixyd = 2
+//!
+//! E (one digit per row/column)
+//! sum_i h_ijyd = 2
+//! sum_j v_ijyd = 2
+//!
+//! Once a constraint is tight, `possible` and `asserted` will be set tight for that sum.
+//! If `asserted` is not a subset of `possible`, one of those sums will become out of bands.
+//! So no need to separately check whether `asserted` is a subset of `possible`.
+
 use crate::{
     board::{box_major_coordinates, Board, Coordinates, FilledBoard, Move},
     digit::Digit,
@@ -188,8 +189,7 @@ impl SearchState {
 
     /// Simplify a regular box.
     fn simplify_box(&mut self, big0: Small<3>, big1: Small<3>) -> Result<(), ()> {
-        let box_coord = VariableBigCoord::Box(big0, big1);
-        let box_index = box_coord.encode();
+        let box_index = VariableBigCoord::Box(big0, big1).encode();
 
         if self.variables[box_index].process_box()? {
             {
@@ -213,12 +213,32 @@ impl SearchState {
 
     /// Simplify an hband box.
     fn simplify_hband(&mut self, big0: Small<3>) -> Result<(), ()> {
-        todo!()
+        let hband_index = VariableBigCoord::HBand(big0).encode();
+        let (variables0, variables1) = self.variables.split_at_mut(hband_index.into());
+        if variables1[0].process_hband()? {
+            for big1 in Small::<3>::all() {
+                let box_coord = VariableBigCoord::Box(big0, big1);
+                let box_index = box_coord.encode();
+                variables0[usize::from(box_index)].propagate_from_hband(&mut variables1[0], big1);
+                self.queue.push(box_coord);
+            }
+        }
+        Ok(())
     }
 
     /// Simplify a vband box.
     fn simplify_vband(&mut self, big1: Small<3>) -> Result<(), ()> {
-        todo!()
+        let vband_index = VariableBigCoord::VBand(big1).encode();
+        let (variables0, variables1) = self.variables.split_at_mut(vband_index.into());
+        if variables1[0].process_vband()? {
+            for big0 in Small::<3>::all() {
+                let box_coord = VariableBigCoord::Box(big0, big1);
+                let box_index = box_coord.encode();
+                variables0[usize::from(box_index)].propagate_from_vband(&mut variables1[0], big0);
+                self.queue.push(box_coord);
+            }
+        }
+        Ok(())
     }
 
     /// Branch and return a second state.
@@ -452,5 +472,135 @@ impl Variables4x4x9 {
         vband.possible &= vband
             .possible
             .replace_last_row(self.possible.move_to_last_column(big0));
+    }
+
+    // Returns whether something changed.
+    fn process_hband(&mut self) -> Result<bool, ()> {
+        let mut changed = false;
+        loop {
+            if self.asserted_processed != self.asserted {
+                self.process_hband_asserted()?;
+                changed = true;
+            } else if changed {
+                // We don't break on the first iteration.
+                // On subsequent iterations `changed` is true and we break.
+                break;
+            }
+
+            if self.possible_processed == self.possible {
+                break;
+            }
+            self.process_hband_possible()?;
+            changed = true;
+        }
+        Ok(changed)
+    }
+
+    // Returns whether something changed.
+    fn process_vband(&mut self) -> Result<bool, ()> {
+        let mut changed = false;
+        loop {
+            if self.asserted_processed != self.asserted {
+                self.process_vband_asserted()?;
+                changed = true;
+            } else if changed {
+                // We don't break on the first iteration.
+                // On subsequent iterations `changed` is true and we break.
+                break;
+            }
+
+            if self.possible_processed == self.possible {
+                break;
+            }
+            self.process_vband_possible()?;
+            changed = true;
+        }
+        Ok(changed)
+    }
+
+    /// Equation E, horizontal: sum in row is 2.
+    fn process_hband_asserted(&mut self) -> Result<(), ()> {
+        let mut rot = self.asserted.rotate_first_3_right();
+        let mut ge_2 = self.asserted & rot;
+        let ge_1 = self.asserted | rot;
+        rot = rot.rotate_first_3_right();
+        let ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        // ge_1 |= rot;
+
+        if !ge_3.is_all_empty() {
+            return Err(());
+        }
+        self.possible &= self.possible.and_not(ge_2.and_not(self.asserted));
+
+        self.asserted_processed = self.asserted;
+        Ok(())
+    }
+
+    /// Equation E, horizontal: sum in row is 2.
+    fn process_hband_possible(&mut self) -> Result<(), ()> {
+        let mut rot = self.possible.rotate_first_3_right();
+        let mut ge_2 = self.possible & rot;
+        let ge_1 = self.possible | rot;
+        rot = rot.rotate_first_3_right();
+        let ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        // ge_1 |= rot;
+
+        let all = DigitBox::all3x3();
+        if ge_2 != all {
+            return Err(());
+        }
+        self.asserted |= self.possible.and_not(ge_3);
+
+        self.possible_processed = self.possible;
+        Ok(())
+    }
+
+    /// Equation E, vertical: sum in column is 2.
+    fn process_vband_asserted(&mut self) -> Result<(), ()> {
+        let mut rot = self.asserted.rotate_first_3_down();
+        let mut ge_2 = self.asserted & rot;
+        let ge_1 = self.asserted | rot;
+        rot = rot.rotate_first_3_down();
+        let ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        // ge_1 |= rot;
+
+        if !ge_3.is_all_empty() {
+            return Err(());
+        }
+        self.possible &= self.possible.and_not(ge_2.and_not(self.asserted));
+
+        self.asserted_processed = self.asserted;
+        Ok(())
+    }
+
+    /// Equation E, vertical: sum in column is 2.
+    fn process_vband_possible(&mut self) -> Result<(), ()> {
+        let mut rot = self.possible.rotate_first_3_down();
+        let mut ge_2 = self.possible & rot;
+        let ge_1 = self.possible | rot;
+        rot = rot.rotate_first_3_down();
+        let ge_3 = ge_2 & rot;
+        ge_2 |= rot & ge_1;
+        // ge_1 |= rot;
+
+        let all = DigitBox::all3x3();
+        if ge_2 != all {
+            return Err(());
+        }
+        self.asserted |= self.possible.and_not(ge_3);
+
+        self.possible_processed = self.possible;
+        Ok(())
+    }
+
+    fn propagate_from_hband(&mut self, hband: &mut Self, big1: Small<3>) {
+        todo!()
+    }
+
+    fn propagate_from_vband(&mut self, vband: &mut Self, big0: Small<3>) {
+        todo!()
     }
 }

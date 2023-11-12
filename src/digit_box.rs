@@ -190,6 +190,16 @@ impl DigitBox {
         Self(Box4x4x16::zero())
     }
 
+    #[rustfmt::skip]
+    pub fn all3x3() -> Self {
+        Self::from([
+            [DigitSet::all(), DigitSet::all(), DigitSet::all(), DigitSet::EMPTY],
+            [DigitSet::all(), DigitSet::all(), DigitSet::all(), DigitSet::EMPTY],
+            [DigitSet::all(), DigitSet::all(), DigitSet::all(), DigitSet::EMPTY],
+            [DigitSet::EMPTY, DigitSet::EMPTY, DigitSet::EMPTY, DigitSet::EMPTY],
+        ])
+    }
+
     pub fn fill(x: DigitSet) -> Self {
         let val: u16 = unsafe { mem::transmute(x) };
         Self(Box4x4x16::fill(val))

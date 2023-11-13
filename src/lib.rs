@@ -1,7 +1,6 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 
-// TODO: Don't include in submission.
-pub mod basic_solver;
+pub mod basic_solver; // submission::skip
 pub mod bits;
 pub mod board;
 pub mod chacha;

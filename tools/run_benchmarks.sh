@@ -7,3 +7,4 @@ cargo run --release --example solver_benchmark -- \
   -i data/most_17.in \
   -o /dev/null \
   -s basic
+  -s fast

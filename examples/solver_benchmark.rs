@@ -10,6 +10,7 @@ use std::{
 use sudoku_game::{
     basic_solver::BasicSolver,
     board::Board,
+    fast_solver::FastSolver,
     solver::{Solver, SolverStep},
 };
 
@@ -28,12 +29,14 @@ struct Args {
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum SolverType {
     Basic,
+    Fast,
 }
 
 impl Display for SolverType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             SolverType::Basic => write!(f, "basic"),
+            SolverType::Fast => write!(f, "fast"),
         }
     }
 }
@@ -46,6 +49,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             match solver_type {
                 SolverType::Basic => {
                     run_benchmark::<BasicSolver>(input_file_name, &args.output)?;
+                }
+                SolverType::Fast => {
+                    run_benchmark::<FastSolver>(input_file_name, &args.output)?;
                 }
             };
         }
@@ -64,7 +70,9 @@ fn run_benchmark<S: Solver>(
 
     let start = Instant::now();
     let mut num_puzzles: u64 = 0;
-    let mut num_solutions: u64 = 0;
+    let mut total_solutions: u64 = 0;
+    let mut min_solutions: u64 = u64::MAX;
+    let mut max_solutions: u64 = 0;
     let mut num_no_progress: u64 = 0;
 
     for line in buf_reader.lines() {
@@ -72,6 +80,7 @@ fn run_benchmark<S: Solver>(
         let board: Board = line.parse()?;
         num_puzzles += 1;
 
+        let mut num_solutions = 0;
         let mut solver = S::new(&board);
         loop {
             match solver.step() {
@@ -87,13 +96,16 @@ fn run_benchmark<S: Solver>(
                 }
             }
         }
+        total_solutions += num_solutions;
+        min_solutions = min_solutions.min(num_solutions);
+        max_solutions = max_solutions.max(num_solutions);
     }
     let elapsed = start.elapsed();
-    let avg_solutions = num_solutions as f64 / num_puzzles as f64;
+    let avg_solutions = total_solutions as f64 / num_puzzles as f64;
     let avg_time = elapsed.as_secs_f64() * 1e6 / num_puzzles as f64;
     let avg_no_progress = num_no_progress as f64 / num_puzzles as f64;
     println!(
-        "  {}  puzzles: {num_puzzles}  solutions: {avg_solutions:.3}  time: {avg_time:.3} µs  no_progress: {avg_no_progress:.3}",
+        "  {}  puzzles: {num_puzzles}  sols: {avg_solutions:.3} ({min_solutions}-{max_solutions})  time: {avg_time:.3} µs  no_progress: {avg_no_progress:.3}",
         input_file_name.display()
     );
     Ok(())

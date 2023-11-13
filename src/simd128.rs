@@ -76,6 +76,17 @@ macro_rules! define_simd_128 {
             pub fn clear_bit(&mut self, i: Small<$n>, bit: Small<{ <$elem>::BITS as usize }>) {
                 *self = self.and_not(Self::single_bit(i, bit));
             }
+
+            pub fn extract(self, index: Small<$n>) -> $elem {
+                let a: [$elem; $n] = self.into();
+                a[index]
+            }
+
+            pub fn insert(self, index: Small<$n>, val: $elem) -> Self {
+                let mut a: [$elem; $n] = self.into();
+                a[index] = val;
+                a.into()
+            }
         }
 
         impl From<[$elem; $n]> for $simd {
@@ -321,17 +332,6 @@ impl AddAssign for Simd4x32 {
 impl Simd2x64 {
     pub fn fill(x: u64) -> Self {
         Self(unsafe { _mm_set1_epi64x(x as i64) })
-    }
-
-    pub fn extract(self, index: Small<2>) -> u64 {
-        let a: [u64; 2] = self.into();
-        a[index]
-    }
-
-    pub fn insert(self, index: Small<2>, val: u64) -> Self {
-        let mut a: [u64; 2] = self.into();
-        a[index] = val;
-        a.into()
     }
 }
 

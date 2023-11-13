@@ -466,14 +466,6 @@ impl Variables4x4x9 {
         Ok(())
     }
 
-    fn propagate_to_hband(&self, hband: &mut Self, big1: Small<3>) {
-        todo!()
-    }
-
-    fn propagate_to_vband(&self, vband: &mut Self, big0: Small<3>) {
-        todo!()
-    }
-
     // Returns whether something changed.
     fn process_hband(&mut self) -> Result<bool, ()> {
         let mut changed = false;
@@ -614,5 +606,21 @@ impl Variables4x4x9 {
             .and_not(vband.possible.into())
             .move_row(big0.into(), Small::new(3));
         self.possible = self.possible.and_not_bits(impossible);
+    }
+
+    fn propagate_to_hband(&self, hband: &mut Self, big1: Small<3>) {
+        hband.asserted |= self.asserted.move_column(Small::new(3), big1.into());
+        let impossible = Box4x4x16::all_bits()
+            .and_not(self.possible.into())
+            .move_column(Small::new(3), big1.into());
+        hband.possible = hband.possible.and_not_bits(impossible);
+    }
+
+    fn propagate_to_vband(&self, vband: &mut Self, big0: Small<3>) {
+        vband.asserted |= self.asserted.move_row(Small::new(3), big0.into());
+        let impossible = Box4x4x16::all_bits()
+            .and_not(self.possible.into())
+            .move_row(Small::new(3), big0.into());
+        vband.possible = vband.possible.and_not_bits(impossible);
     }
 }

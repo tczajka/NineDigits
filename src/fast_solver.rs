@@ -442,11 +442,11 @@ impl Variables4x4x9 {
         let mut ge_1 = self.asserted | rot;
         rot = rot.rotate_right();
         let mut ge_3 = ge_2 & rot;
-        ge_2 |= rot & ge_1;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
         rot = rot.rotate_right();
-        ge_3 |= rot & ge_2;
-        ge_2 |= rot & ge_1;
+        ge_3 |= ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
 
         if !ge_2.replace_last_row(ge_3).is_all_empty() {
@@ -465,17 +465,17 @@ impl Variables4x4x9 {
         let mut ge_1 = self.asserted | rot;
         rot = rot.rotate_down();
         let mut ge_3 = ge_2 & rot;
-        ge_2 |= rot & ge_1;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
         rot = rot.rotate_down();
-        ge_3 |= rot & ge_2;
-        ge_2 |= rot & ge_1;
+        ge_3 |= ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
 
         if !ge_2.replace_last_column(ge_3).is_all_empty() {
             return Err(());
         }
-        let fixed = ge_1.replace_last_row(ge_2);
+        let fixed = ge_1.replace_last_column(ge_2);
         let impossible = fixed.and_not(self.asserted);
         self.possible = self.possible.and_not(impossible);
         Ok(())
@@ -511,14 +511,14 @@ impl Variables4x4x9 {
     fn process_box_possible_horizontal(&mut self) -> Result<(), ()> {
         let mut rot = self.possible.rotate_right();
         let mut ge_2 = self.possible & rot;
-        let mut ge_1 = self.asserted | rot;
+        let mut ge_1 = self.possible | rot;
         rot = rot.rotate_right();
         let mut ge_3 = ge_2 & rot;
-        ge_2 |= rot & ge_1;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
         rot = rot.rotate_right();
-        ge_3 |= rot & ge_2;
-        ge_2 |= rot & ge_1;
+        ge_3 |= ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
 
         let all = DigitBox::fill(DigitSet::all());
@@ -535,14 +535,14 @@ impl Variables4x4x9 {
     fn process_box_possible_vertical(&mut self) -> Result<(), ()> {
         let mut rot = self.possible.rotate_down();
         let mut ge_2 = self.possible & rot;
-        let mut ge_1 = self.asserted | rot;
+        let mut ge_1 = self.possible | rot;
         rot = rot.rotate_down();
         let mut ge_3 = ge_2 & rot;
-        ge_2 |= rot & ge_1;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
         rot = rot.rotate_down();
-        ge_3 |= rot & ge_2;
-        ge_2 |= rot & ge_1;
+        ge_3 |= ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         ge_1 |= rot;
 
         let all = DigitBox::fill(DigitSet::all());
@@ -550,7 +550,7 @@ impl Variables4x4x9 {
         if ge_1.replace_last_column(ge_2) != all {
             return Err(());
         }
-        let not_fixed = ge_2.replace_last_row(ge_3);
+        let not_fixed = ge_2.replace_last_column(ge_3);
         let required = self.possible.and_not(not_fixed);
         self.asserted |= required;
         Ok(())
@@ -606,8 +606,8 @@ impl Variables4x4x9 {
         let mut ge_2 = self.asserted & rot;
         let ge_1 = self.asserted | rot;
         rot = rot.rotate_first_3_right();
-        let ge_3 = rot & ge_2;
-        ge_2 |= rot & ge_1;
+        let ge_3 = ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         // ge_1 |= rot;
 
         if !ge_3.is_all_empty() {
@@ -626,8 +626,8 @@ impl Variables4x4x9 {
         let mut ge_2 = self.possible & rot;
         let ge_1 = self.possible | rot;
         rot = rot.rotate_first_3_right();
-        let ge_3 = rot & ge_2;
-        ge_2 |= rot & ge_1;
+        let ge_3 = ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         // ge_1 |= rot;
 
         let all = DigitBox::all3x3();
@@ -647,8 +647,8 @@ impl Variables4x4x9 {
         let mut ge_2 = self.asserted & rot;
         let ge_1 = self.asserted | rot;
         rot = rot.rotate_first_3_down();
-        let ge_3 = rot & ge_2;
-        ge_2 |= rot & ge_1;
+        let ge_3 = ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         // ge_1 |= rot;
 
         if !ge_3.is_all_empty() {
@@ -667,8 +667,8 @@ impl Variables4x4x9 {
         let mut ge_2 = self.possible & rot;
         let ge_1 = self.possible | rot;
         rot = rot.rotate_first_3_down();
-        let ge_3 = rot & ge_2;
-        ge_2 |= rot & ge_1;
+        let ge_3 = ge_2 & rot;
+        ge_2 |= ge_1 & rot;
         // ge_1 |= rot;
 
         let all = DigitBox::all3x3();

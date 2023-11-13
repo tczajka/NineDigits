@@ -80,6 +80,23 @@ fn test_digit_box_set_clear() {
 }
 
 #[test]
+fn test_digit_box_first_digit() {
+    assert_eq!(DigitBox::empty().first_digit(), None);
+
+    let a: DigitBox = "|||
+||9|
+123|||
+1|2|3|4"
+        .parse()
+        .unwrap();
+
+    assert_eq!(
+        a.first_digit(),
+        Some(([Small::new(1), Small::new(2)], '9'.try_into().unwrap()))
+    );
+}
+
+#[test]
 fn test_bitops() {
     let a: DigitBox = "1|23|456|123456789
 12||1234|579

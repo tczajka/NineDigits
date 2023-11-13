@@ -34,6 +34,26 @@ macro_rules! define_simd_256 {
                 let (half, j): (Small<2>, Small<{ $n / 2 }>) = i.split();
                 self.0[half].clear_bit(j, bit);
             }
+
+            pub fn extract(self, i: Small<$n>) -> $elem {
+                let (half, j): (Small<2>, Small<{ $n / 2 }>) = i.split();
+                self.0[half].extract(j)
+            }
+
+            pub fn insert(mut self, i: Small<$n>, val: $elem) -> Self {
+                let (half, j): (Small<2>, Small<{ $n / 2 }>) = i.split();
+                self.0[half] = self.0[half].insert(j, val);
+                self
+            }
+
+            pub fn first_bit(self) -> Option<(Small<$n>, Small<{ <$elem>::BITS as usize }>)> {
+                for half in Small::<2>::all() {
+                    if let Some((i, bit)) = self.0[half].first_bit() {
+                        return Some((Small::combine(half, i), bit));
+                    }
+                }
+                None
+            }
         }
 
         impl From<[$elem; $n]> for $simd {
@@ -213,16 +233,5 @@ impl Simd16x16 {
 impl Simd4x64 {
     pub fn fill(x: u64) -> Self {
         Self([Simd2x64::fill(x), Simd2x64::fill(x)])
-    }
-
-    pub fn extract(self, i: Small<4>) -> u64 {
-        let (half, j): (Small<2>, Small<2>) = i.split();
-        self.0[half].extract(j)
-    }
-
-    pub fn insert(mut self, i: Small<4>, val: u64) -> Self {
-        let (half, j): (Small<2>, Small<2>) = i.split();
-        self.0[half] = self.0[half].insert(j, val);
-        self
     }
 }

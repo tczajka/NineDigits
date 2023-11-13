@@ -17,7 +17,9 @@ use std::arch::x86_64::{
     _mm256_blendv_epi8,
     _mm256_cmpeq_epi16,
     _mm256_cmpgt_epi16,
+    _mm256_cmpgt_epi8,
     _mm256_loadu_si256,
+    _mm256_movemask_epi8,
     _mm256_or_si256,
     _mm256_permute4x64_epi64,
     _mm256_set1_epi16,
@@ -81,6 +83,11 @@ macro_rules! define_simd_256 {
                 let mut a: [$elem; $n] = self.into();
                 a[index] = val;
                 a.into()
+            }
+
+            pub fn first_bit(self) -> Option<(Small<$n>, Small<{ <$elem>::BITS as usize }>)> {
+                let bit = first_bit_256(self.0)?;
+                Some(Small::split(bit))
             }
         }
 
@@ -286,4 +293,20 @@ impl Simd4x64 {
 fn single_bit_256(bit: Small<256>) -> __m256i {
     let (i, b): (Small<4>, Small<64>) = bit.split();
     Simd4x64::zero().insert(i, 1 << u8::from(b)).0
+}
+
+fn first_bit_256(a: __m256i) -> Option<Small<256>> {
+    let first_byte: Small<32> = unsafe {
+        let nonzero_mask = _mm256_cmpgt_epi8(a, _mm256_setzero_si256());
+        let nonzero_bytes: u32 = _mm256_movemask_epi8(nonzero_mask) as u32;
+        if nonzero_bytes == 0 {
+            return None;
+        }
+        // SAFETY: trailing zeros is in 0..32.
+        Small::new_unchecked(nonzero_bytes.trailing_zeros() as u8)
+    };
+    let byte = Simd32x8(a).extract(first_byte);
+    // SAFETY: byte is non-zero, trailing_zeros is 0..8.
+    let first_bit: Small<8> = unsafe { Small::new_unchecked(byte.trailing_zeros() as u8) };
+    Some(Small::combine(first_byte, first_bit))
 }

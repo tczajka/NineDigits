@@ -1,6 +1,7 @@
 use sudoku_game::{
     simd128::{Simd4x32, Simd8x16},
     simd256::{Simd16x16, Simd4x64},
+    small::Small,
 };
 
 #[test]
@@ -48,6 +49,13 @@ fn test_simd4x32_bitops() {
     let mut a = x;
     a ^= y;
     assert_eq!(a, expected_xor);
+}
+
+#[test]
+fn test_simd4x32_first_bit() {
+    let x = Simd4x32::from([0b0000, 0b0100, 0b1111, 0b1111]);
+    assert_eq!(x.first_bit(), Some((Small::new(1), Small::new(2))));
+    assert_eq!(Simd4x32::zero().first_bit(), None);
 }
 
 #[test]
@@ -167,6 +175,15 @@ fn test_simd4x64_bitops() {
     let mut a = x;
     a ^= y;
     assert_eq!(a, expected_xor);
+}
+
+#[test]
+fn test_simd4x64_first_bit() {
+    let x = Simd4x64::from([0b0000, 0b0100, 0b1111, 0b1111]);
+    let y = Simd4x64::from([0b0000, 0b0000, 0b1000, 0b1111]);
+    assert_eq!(x.first_bit(), Some((Small::new(1), Small::new(2))));
+    assert_eq!(y.first_bit(), Some((Small::new(2), Small::new(3))));
+    assert_eq!(Simd4x64::zero().first_bit(), None);
 }
 
 #[test]

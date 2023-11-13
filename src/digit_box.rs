@@ -46,6 +46,12 @@ impl Box4x4x16 {
         self.0.clear_bit(Small::combine(coord[0], coord[1]), bit);
     }
 
+    pub fn first_bit(self) -> Option<([Small<4>; 2], Small<16>)> {
+        let (i, bit) = self.0.first_bit()?;
+        let (y, x) = Small::split(i);
+        Some(([y, x], bit))
+    }
+
     pub fn and_not(self, other: Self) -> Self {
         Self(self.0.and_not(other.0))
     }
@@ -224,6 +230,12 @@ impl DigitBox {
 
     pub fn clear(&mut self, coord: [Small<4>; 2], digit: Digit) {
         self.0.clear_bit(coord, Small::<9>::from(digit).into());
+    }
+
+    pub fn first_digit(self) -> Option<([Small<4>; 2], Digit)> {
+        let (coord, bit) = self.0.first_bit()?;
+        let small_bit: Small<9> = bit.try_into().unwrap();
+        Some((coord, small_bit.into()))
     }
 
     pub fn and_not_bits(self, other: Box4x4x16) -> Self {

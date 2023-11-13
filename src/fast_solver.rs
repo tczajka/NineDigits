@@ -54,7 +54,11 @@ impl Solver for FastSolver {
         let mut state = SearchState::initial();
         for coord in box_major_coordinates() {
             if let Some(digit) = board.square(coord.into()).to_digit() {
-                state.assert_digit(coord, digit);
+                state.assert(Variable::Digit {
+                    big: coord.big,
+                    small: coord.small,
+                    digit,
+                });
             }
         }
         Self {
@@ -73,14 +77,21 @@ impl Solver for FastSolver {
             if let Some(filled_board) = state.get_solution() {
                 return SolverStep::Found(filled_board);
             }
-            self.remaining.push(state.branch());
+
+            let branch_variable = state.select_branch_variable();
+
+            let mut other_state = state.clone();
+            other_state.reject(branch_variable);
+            self.remaining.push(other_state);
+
+            state.assert(branch_variable);
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 enum VariableBigCoord {
-    Box(Small<3>, Small<3>),
+    Box([Small<3>; 2]),
     HBand(Small<3>),
     VBand(Small<3>),
 }
@@ -88,11 +99,52 @@ enum VariableBigCoord {
 impl VariableBigCoord {
     fn encode(self) -> Small<15> {
         let (i, j): (Small<4>, Small<4>) = match self {
-            Self::Box(i, j) => (i.into(), j.into()),
+            Self::Box([i, j]) => (i.into(), j.into()),
             Self::HBand(i) => (i.into(), Small::<4>::new(3)),
             Self::VBand(j) => (Small::<4>::new(3), j.into()),
         };
         Small::<16>::combine(i, j).try_into().unwrap()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Variable {
+    Digit {
+        big: [Small<3>; 2],
+        small: [Small<3>; 2],
+        digit: Digit,
+    },
+    HTriad {
+        big: [Small<3>; 2],
+        small0: Small<3>,
+        digit: Digit,
+    },
+    VTriad {
+        big: [Small<3>; 2],
+        small1: Small<3>,
+        digit: Digit,
+    },
+}
+
+impl Variable {
+    fn coordinates(self) -> (VariableBigCoord, [Small<4>; 2], Digit) {
+        match self {
+            Variable::Digit { big, small, digit } => (
+                VariableBigCoord::Box(big),
+                [small[0].into(), small[1].into()],
+                digit,
+            ),
+            Variable::HTriad { big, small0, digit } => (
+                VariableBigCoord::HBand(big[0]),
+                [small0.into(), big[1].into()],
+                digit,
+            ),
+            Variable::VTriad { big, small1, digit } => (
+                VariableBigCoord::VBand(big[1]),
+                [big[0].into(), small1.into()],
+                digit,
+            ),
+        }
     }
 }
 
@@ -165,13 +217,19 @@ impl SearchState {
         }
     }
 
-    fn assert_digit(&mut self, coord: Coordinates, digit: Digit) {
-        let big_coord = VariableBigCoord::Box(coord.big[0], coord.big[1]);
-        self.variables[big_coord.encode()].asserted.set(
-            coord.small[0].into(),
-            coord.small[1].into(),
-            digit,
-        );
+    fn assert(&mut self, variable: Variable) {
+        let (big_coord, small_coord, digit) = variable.coordinates();
+        self.variables[big_coord.encode()]
+            .asserted
+            .set(small_coord, digit);
+        self.queue.push(big_coord);
+    }
+
+    fn reject(&mut self, variable: Variable) {
+        let (big_coord, small_coord, digit) = variable.coordinates();
+        self.variables[big_coord.encode()]
+            .possible
+            .clear(small_coord, digit);
         self.queue.push(big_coord);
     }
 
@@ -179,7 +237,7 @@ impl SearchState {
     fn simplify(&mut self) -> Result<(), ()> {
         while let Some(big_coord) = self.queue.pop() {
             match big_coord {
-                VariableBigCoord::Box(big0, big1) => self.simplify_box(big0, big1)?,
+                VariableBigCoord::Box(big) => self.simplify_box(big)?,
                 VariableBigCoord::HBand(big0) => self.simplify_hband(big0)?,
                 VariableBigCoord::VBand(big1) => self.simplify_vband(big1)?,
             }
@@ -188,22 +246,22 @@ impl SearchState {
     }
 
     /// Simplify a regular box.
-    fn simplify_box(&mut self, big0: Small<3>, big1: Small<3>) -> Result<(), ()> {
-        let box_index = VariableBigCoord::Box(big0, big1).encode();
+    fn simplify_box(&mut self, big: [Small<3>; 2]) -> Result<(), ()> {
+        let box_index = VariableBigCoord::Box(big).encode();
 
         if self.variables[box_index].process_box()? {
             {
-                let hband_coord = VariableBigCoord::HBand(big0);
+                let hband_coord = VariableBigCoord::HBand(big[0]);
                 let hband_index = hband_coord.encode();
                 let (variables0, variables1) = self.variables.split_at_mut(hband_index.into());
-                variables0[usize::from(box_index)].propagate_to_hband(&mut variables1[0], big1);
+                variables0[usize::from(box_index)].propagate_to_hband(&mut variables1[0], big[1]);
                 self.queue.push(hband_coord);
             }
             {
-                let vband_coord = VariableBigCoord::VBand(big1);
+                let vband_coord = VariableBigCoord::VBand(big[1]);
                 let vband_index = vband_coord.encode();
                 let (variables0, variables1) = self.variables.split_at_mut(vband_index.into());
-                variables0[usize::from(box_index)].propagate_to_vband(&mut variables1[0], big0);
+                variables0[usize::from(box_index)].propagate_to_vband(&mut variables1[0], big[0]);
                 self.queue.push(vband_coord);
             }
         }
@@ -217,7 +275,7 @@ impl SearchState {
         let (variables0, variables1) = self.variables.split_at_mut(hband_index.into());
         if variables1[0].process_hband()? {
             for big1 in Small::<3>::all() {
-                let box_coord = VariableBigCoord::Box(big0, big1);
+                let box_coord = VariableBigCoord::Box([big0, big1]);
                 let box_index = box_coord.encode();
                 variables0[usize::from(box_index)].propagate_from_hband(&variables1[0], big1);
                 self.queue.push(box_coord);
@@ -232,7 +290,7 @@ impl SearchState {
         let (variables0, variables1) = self.variables.split_at_mut(vband_index.into());
         if variables1[0].process_vband()? {
             for big0 in Small::<3>::all() {
-                let box_coord = VariableBigCoord::Box(big0, big1);
+                let box_coord = VariableBigCoord::Box([big0, big1]);
                 let box_index = box_coord.encode();
                 variables0[usize::from(box_index)].propagate_from_vband(&variables1[0], big0);
                 self.queue.push(box_coord);
@@ -241,8 +299,7 @@ impl SearchState {
         Ok(())
     }
 
-    /// Branch and return a second state.
-    fn branch(&mut self) -> Self {
+    fn select_branch_variable(&self) -> Variable {
         todo!()
     }
 
@@ -256,7 +313,7 @@ impl SearchState {
         let mut board = Board::empty();
         for big0 in Small::<3>::all() {
             for big1 in Small::<3>::all() {
-                let big_coord = VariableBigCoord::Box(big0, big1);
+                let big_coord = VariableBigCoord::Box([big0, big1]);
                 let digit_sets: [[DigitSet; 4]; 4] =
                     self.variables[big_coord.encode()].asserted.into();
                 for small0 in Small::<3>::all() {

@@ -38,12 +38,12 @@ impl Box4x4x16 {
         self.0.is_all_zero()
     }
 
-    pub fn set_bit(&mut self, y: Small<4>, x: Small<4>, bit: Small<16>) {
-        self.0.set_bit(Small::combine(y, x), bit);
+    pub fn set_bit(&mut self, coord: [Small<4>; 2], bit: Small<16>) {
+        self.0.set_bit(Small::combine(coord[0], coord[1]), bit);
     }
 
-    pub fn clear_bit(&mut self, y: Small<4>, x: Small<4>, bit: Small<16>) {
-        self.0.clear_bit(Small::combine(y, x), bit);
+    pub fn clear_bit(&mut self, coord: [Small<4>; 2], bit: Small<16>) {
+        self.0.clear_bit(Small::combine(coord[0], coord[1]), bit);
     }
 
     pub fn and_not(self, other: Self) -> Self {
@@ -218,12 +218,12 @@ impl DigitBox {
         self.0.is_all_zero()
     }
 
-    pub fn set(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
-        self.0.set_bit(y, x, Small::<9>::from(digit).into());
+    pub fn set(&mut self, coord: [Small<4>; 2], digit: Digit) {
+        self.0.set_bit(coord, Small::<9>::from(digit).into());
     }
 
-    pub fn clear(&mut self, y: Small<4>, x: Small<4>, digit: Digit) {
-        self.0.clear_bit(y, x, Small::<9>::from(digit).into());
+    pub fn clear(&mut self, coord: [Small<4>; 2], digit: Digit) {
+        self.0.clear_bit(coord, Small::<9>::from(digit).into());
     }
 
     pub fn and_not_bits(self, other: Box4x4x16) -> Self {

@@ -73,9 +73,9 @@ fn test_digit_box_set_clear() {
         .unwrap();
 
     let mut x = a;
-    x.set(Small::new(1), Small::new(0), '7'.try_into().unwrap());
+    x.set([Small::new(1), Small::new(0)], '7'.try_into().unwrap());
     assert_eq!(x, expected);
-    x.clear(Small::new(1), Small::new(0), '7'.try_into().unwrap());
+    x.clear([Small::new(1), Small::new(0)], '7'.try_into().unwrap());
     assert_eq!(x, a);
 }
 

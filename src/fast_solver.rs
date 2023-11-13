@@ -135,11 +135,13 @@ impl Variable {
                 digit,
             ),
             Variable::HTriad { big, small0, digit } => (
+                // Arbitrary: we could use VariableBigCoord::Box(big).
                 VariableBigCoord::HBand(big[0]),
                 [small0.into(), big[1].into()],
                 digit,
             ),
             Variable::VTriad { big, small1, digit } => (
+                // Arbitrary: we could use VariableBigCoord::Box(big).
                 VariableBigCoord::VBand(big[1]),
                 [big[0].into(), small1.into()],
                 digit,
@@ -300,7 +302,34 @@ impl SearchState {
     }
 
     fn select_branch_variable(&self) -> Variable {
-        todo!()
+        let big_coord = self.select_branch_band();
+        let (small_coord, digit) = self.variables[big_coord.encode()].select_branch_within_band();
+        match big_coord {
+            VariableBigCoord::Box(_) => unreachable!(),
+            VariableBigCoord::HBand(big0) => Variable::HTriad {
+                big: [big0, small_coord[1]],
+                small0: small_coord[0],
+                digit,
+            },
+            VariableBigCoord::VBand(big1) => Variable::VTriad {
+                big: [small_coord[0], big1],
+                small1: small_coord[1],
+                digit,
+            },
+        }
+    }
+
+    fn select_branch_band(&self) -> VariableBigCoord {
+        // TODO: Select the band with the smallest or larger number of undecided variables.
+        Small::<3>::all()
+            .map(VariableBigCoord::HBand)
+            .chain(Small::<3>::all().map(VariableBigCoord::VBand))
+            .find(|&big_coord| {
+                !self.variables[big_coord.encode()]
+                    .undecided()
+                    .is_all_empty()
+            })
+            .expect("No undecided variables")
     }
 
     // `None` if the search isn't finished.
@@ -679,5 +708,18 @@ impl Variables4x4x9 {
             .and_not(self.possible.into())
             .move_row(Small::new(3), big0.into());
         vband.possible = vband.possible.and_not_bits(impossible);
+    }
+
+    fn undecided(&self) -> DigitBox {
+        self.possible.and_not(self.asserted)
+    }
+
+    fn select_branch_within_band(&self) -> ([Small<3>; 2], Digit) {
+        // TODO: Select the least/most undecided digit.
+        let ([big0, big1], digit) = self
+            .undecided()
+            .first_digit()
+            .expect("No undecided variables");
+        ([big0.try_into().unwrap(), big1.try_into().unwrap()], digit)
     }
 }

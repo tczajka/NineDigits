@@ -22,8 +22,6 @@ use std::arch::x86_64::{
     _mm_cmpeq_epi16,
     _mm_cmplt_epi16,
     _mm_cvtsi32_si128,
-    _mm_extract_epi64,
-    _mm_insert_epi64,
     _mm_loadu_si128,
     _mm_set1_epi16,
     _mm_set1_epi64x,
@@ -326,25 +324,14 @@ impl Simd2x64 {
     }
 
     pub fn extract(self, index: Small<2>) -> u64 {
-        let res = unsafe {
-            match u8::from(index) {
-                0 => _mm_extract_epi64::<0>(self.0),
-                1 => _mm_extract_epi64::<1>(self.0),
-                _ => unreachable!(),
-            }
-        };
-        res as u64
+        let a: [u64; 2] = self.into();
+        a[index]
     }
 
     pub fn insert(self, index: Small<2>, val: u64) -> Self {
-        let res = unsafe {
-            match u8::from(index) {
-                0 => _mm_insert_epi64::<0>(self.0, val as i64),
-                1 => _mm_insert_epi64::<1>(self.0, val as i64),
-                _ => unreachable!(),
-            }
-        };
-        Self(res)
+        let mut a: [u64; 2] = self.into();
+        a[index] = val;
+        a.into()
     }
 }
 

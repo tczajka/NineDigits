@@ -75,6 +75,15 @@ fn test_simd8x16_popcount_9() {
 }
 
 #[test]
+fn test_simd8x16_any_lt() {
+    let a = Simd8x16::from([0, 1, 2, 3, 4, 5, 6, 0xfffe]);
+    let b = Simd8x16::from([0, 1, 2, 3, 3, 5, 6, 10]);
+    let c = Simd8x16::from([100, 1, 2, 3, 4, 5, 6, 0xfffe]);
+    assert!(!a.any_lt(b));
+    assert!(a.any_lt(c));
+}
+
+#[test]
 fn test_simd4x32_rotate_bits() {
     let x = Simd4x32::from([
         0b00000000000000000000000000000100,
@@ -208,4 +217,13 @@ fn test_simd16x16_popcount_9() {
     ]);
     let expected = Simd16x16::from([0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 5, 5, 4, 5, 9]);
     assert_eq!(a.popcount_9(), expected);
+}
+
+#[test]
+fn test_simd16x16_any_lt() {
+    let a = Simd16x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0xfffe]);
+    let b = Simd16x16::from([0, 1, 2, 3, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 10]);
+    let c = Simd16x16::from([100, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0xfffe]);
+    assert!(!a.any_lt(b));
+    assert!(a.any_lt(c));
 }

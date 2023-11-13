@@ -16,9 +16,9 @@ use std::arch::x86_64::{
     _mm256_blend_epi16,
     _mm256_blendv_epi8,
     _mm256_cmpeq_epi16,
-    _mm256_cmpgt_epi16,
-    _mm256_cmpgt_epi8,
+    _mm256_cmpeq_epi8,
     _mm256_loadu_si256,
+    _mm256_max_epu16,
     _mm256_movemask_epi8,
     _mm256_or_si256,
     _mm256_permute4x64_epi64,
@@ -31,6 +31,7 @@ use std::arch::x86_64::{
     _mm256_srl_epi64,
     _mm256_srli_epi16,
     _mm256_storeu_si256,
+    _mm256_testc_si256,
     _mm256_testz_si256,
     _mm256_xor_si256,
 };
@@ -207,8 +208,11 @@ impl Simd16x16 {
 
     pub fn any_lt(self, other: Self) -> bool {
         unsafe {
-            let lt = _mm256_cmpgt_epi16(other.0, self.0);
-            _mm256_testz_si256(lt, lt) == 0
+            let max = _mm256_max_epu16(self.0, other.0);
+            let ge = _mm256_cmpeq_epi16(self.0, max);
+            let ones = _mm256_cmpeq_epi16(max, max);
+            // Test that ge is all ones.
+            _mm256_testc_si256(ge, ones) == 0
         }
     }
 
@@ -297,13 +301,13 @@ fn single_bit_256(bit: Small<256>) -> __m256i {
 
 fn first_bit_256(a: __m256i) -> Option<Small<256>> {
     let first_byte: Small<32> = unsafe {
-        let nonzero_mask = _mm256_cmpgt_epi8(a, _mm256_setzero_si256());
-        let nonzero_bytes: u32 = _mm256_movemask_epi8(nonzero_mask) as u32;
-        if nonzero_bytes == 0 {
+        let zero_mask = _mm256_cmpeq_epi8(a, _mm256_setzero_si256());
+        let zero_bytes: u32 = _mm256_movemask_epi8(zero_mask) as u32;
+        if zero_bytes == 0xffffffff {
             return None;
         }
-        // SAFETY: trailing zeros is in 0..32.
-        Small::new_unchecked(nonzero_bytes.trailing_zeros() as u8)
+        // SAFETY: trailing_ones is in 0..32.
+        Small::new_unchecked(zero_bytes.trailing_ones() as u8)
     };
     let byte = Simd32x8(a).extract(first_byte);
     // SAFETY: byte is non-zero, trailing_zeros is 0..8.

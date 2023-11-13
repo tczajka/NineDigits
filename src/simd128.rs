@@ -20,10 +20,10 @@ use std::arch::x86_64::{
     _mm_andnot_si128,
     _mm_blend_epi16,
     _mm_cmpeq_epi16,
-    _mm_cmplt_epi16,
     _mm_cvtsi32_si128,
-    _mm_cmpgt_epi8,
+    _mm_cmpeq_epi8,
     _mm_loadu_si128,
+    _mm_max_epu16,
     _mm_movemask_epi8,
     _mm_set1_epi16,
     _mm_set1_epi64x,
@@ -45,6 +45,7 @@ use std::arch::x86_64::{
     _mm_shuffle_epi8,
     // SSE4.1
     _mm_blendv_epi8,
+    _mm_test_all_ones,
     _mm_test_all_zeros,
 };
 use crate::small::{CartesianProduct, Small};
@@ -218,8 +219,9 @@ impl Simd8x16 {
 
     pub fn any_lt(self, other: Self) -> bool {
         unsafe {
-            let lt = _mm_cmplt_epi16(self.0, other.0);
-            _mm_test_all_zeros(lt, lt) == 0
+            let max = _mm_max_epu16(self.0, other.0);
+            let ge = _mm_cmpeq_epi16(self.0, max);
+            _mm_test_all_ones(ge) == 0
         }
     }
 
@@ -349,13 +351,13 @@ fn single_bit_128(bit: Small<128>) -> __m128i {
 
 fn first_bit_128(a: __m128i) -> Option<Small<128>> {
     let first_byte: Small<16> = unsafe {
-        let nonzero_mask = _mm_cmpgt_epi8(a, _mm_setzero_si128());
-        let nonzero_bytes: u32 = _mm_movemask_epi8(nonzero_mask) as u32;
-        if nonzero_bytes == 0 {
+        let zero_mask = _mm_cmpeq_epi8(a, _mm_setzero_si128());
+        let zero_bytes: u32 = _mm_movemask_epi8(zero_mask) as u32;
+        if zero_bytes == 0xffff {
             return None;
         }
-        // SAFETY: trailing zeros is in 0..16.
-        Small::new_unchecked(nonzero_bytes.trailing_zeros() as u8)
+        // SAFETY: trailing_ones is in 0..16.
+        Small::new_unchecked(zero_bytes.trailing_ones() as u8)
     };
     let byte = Simd16x8(a).extract(first_byte);
     // SAFETY: byte is non-zero, trailing_zeros is 0..8.

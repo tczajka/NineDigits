@@ -100,8 +100,8 @@ impl VariableBigCoord {
     fn encode(self) -> Small<15> {
         let (i, j): (Small<4>, Small<4>) = match self {
             Self::Box([i, j]) => (i.into(), j.into()),
-            Self::HBand(i) => (i.into(), Small::<4>::new(3)),
-            Self::VBand(j) => (Small::<4>::new(3), j.into()),
+            Self::HBand(i) => (i.into(), Small::new(3)),
+            Self::VBand(j) => (Small::new(3), j.into()),
         };
         Small::<16>::combine(i, j).try_into().unwrap()
     }
@@ -305,7 +305,11 @@ impl SearchState {
         let big_coord = self.select_branch_band();
         let (small_coord, digit) = self.variables[big_coord.encode()].select_branch_within_band();
         match big_coord {
-            VariableBigCoord::Box(_) => unreachable!(),
+            VariableBigCoord::Box(big) => Variable::Digit {
+                big,
+                small: small_coord,
+                digit,
+            },
             VariableBigCoord::HBand(big0) => Variable::HTriad {
                 big: [big0, small_coord[1]],
                 small0: small_coord[0],
@@ -445,7 +449,7 @@ impl Variables4x4x9 {
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
 
-        if !(ge_2.replace_last_row(ge_3)).is_all_empty() {
+        if !ge_2.replace_last_row(ge_3).is_all_empty() {
             return Err(());
         }
         let fixed = ge_1.replace_last_row(ge_2);
@@ -468,7 +472,7 @@ impl Variables4x4x9 {
         ge_2 |= rot & ge_1;
         ge_1 |= rot;
 
-        if !(ge_2.replace_last_column(ge_3)).is_all_empty() {
+        if !ge_2.replace_last_column(ge_3).is_all_empty() {
             return Err(());
         }
         let fixed = ge_1.replace_last_row(ge_2);
@@ -602,7 +606,7 @@ impl Variables4x4x9 {
         let mut ge_2 = self.asserted & rot;
         let ge_1 = self.asserted | rot;
         rot = rot.rotate_first_3_right();
-        let ge_3 = ge_2 & rot;
+        let ge_3 = rot & ge_2;
         ge_2 |= rot & ge_1;
         // ge_1 |= rot;
 
@@ -622,7 +626,7 @@ impl Variables4x4x9 {
         let mut ge_2 = self.possible & rot;
         let ge_1 = self.possible | rot;
         rot = rot.rotate_first_3_right();
-        let ge_3 = ge_2 & rot;
+        let ge_3 = rot & ge_2;
         ge_2 |= rot & ge_1;
         // ge_1 |= rot;
 
@@ -643,7 +647,7 @@ impl Variables4x4x9 {
         let mut ge_2 = self.asserted & rot;
         let ge_1 = self.asserted | rot;
         rot = rot.rotate_first_3_down();
-        let ge_3 = ge_2 & rot;
+        let ge_3 = rot & ge_2;
         ge_2 |= rot & ge_1;
         // ge_1 |= rot;
 
@@ -663,7 +667,7 @@ impl Variables4x4x9 {
         let mut ge_2 = self.possible & rot;
         let ge_1 = self.possible | rot;
         rot = rot.rotate_first_3_down();
-        let ge_3 = ge_2 & rot;
+        let ge_3 = rot & ge_2;
         ge_2 |= rot & ge_1;
         // ge_1 |= rot;
 

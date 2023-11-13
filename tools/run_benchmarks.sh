@@ -6,5 +6,6 @@ cargo run --release --example solver_benchmark -- \
   -i data/hardest26.in \
   -i data/most_17.in \
   -o /dev/null \
+  -s fast \
   -s basic
-  -s fast
+  

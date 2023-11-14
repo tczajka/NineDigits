@@ -69,7 +69,7 @@ fn run_benchmark<S: Solver>(
     let mut buf_writer = BufWriter::new(output_file);
 
     let start = Instant::now();
-    let mut num_puzzles: u64 = 0;
+    let mut num_puzzles: u32 = 0;
     let mut total_solutions: u64 = 0;
     let mut min_solutions: u64 = u64::MAX;
     let mut max_solutions: u64 = 0;
@@ -102,10 +102,11 @@ fn run_benchmark<S: Solver>(
     }
     let elapsed = start.elapsed();
     let avg_solutions = total_solutions as f64 / num_puzzles as f64;
-    let avg_time = elapsed.as_secs_f64() * 1e6 / num_puzzles as f64;
+    //let avg_time = elapsed.as_secs_f64() * 1e6 / num_puzzles as f64;
+    let avg_time = elapsed / num_puzzles;
     let avg_no_progress = num_no_progress as f64 / num_puzzles as f64;
     println!(
-        "  {}  puzzles: {num_puzzles}  sols: {avg_solutions:.3} ({min_solutions}-{max_solutions})  time: {avg_time:.3} µs  no_progress: {avg_no_progress:.3}",
+        "  {}  puzzles: {num_puzzles}  sols: {avg_solutions:.3} ({min_solutions}-{max_solutions})  time: {avg_time:.3?}  no_progress: {avg_no_progress:.3}",
         input_file_name.display()
     );
     Ok(())

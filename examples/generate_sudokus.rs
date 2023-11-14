@@ -6,9 +6,9 @@ use std::{
     path::PathBuf,
 };
 use sudoku_game::{
-    basic_solver::BasicSolver,
     board::{Board, Move},
     digit::Digit,
+    fast_solver::FastSolver,
     random::RandomGenerator,
     small::Small,
     solver::{Solver, SolverStep},
@@ -46,7 +46,6 @@ fn generate(max_solutions: u64, rng: &mut RandomGenerator) -> Board {
         let mut board2 = board;
         board2.make_move(mov);
         let num_solutions = count_solutions(&board2, max_solutions);
-        eprintln!("move:{mov} solutions:{num_solutions}");
         if num_solutions == 0 {
             continue;
         }
@@ -67,7 +66,7 @@ fn random_move(board: &Board, rng: &mut RandomGenerator) -> Move {
 
 fn count_solutions(board: &Board, max_solutions: u64) -> u64 {
     let mut num_solutions = 0;
-    let mut solver = BasicSolver::new(board);
+    let mut solver = FastSolver::new(board);
     loop {
         match solver.step() {
             SolverStep::Found(_) => {

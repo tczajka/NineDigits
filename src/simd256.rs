@@ -208,9 +208,9 @@ impl Simd16x16 {
 
     pub fn any_lt(self, other: Self) -> bool {
         unsafe {
+            let ones = _mm256_cmpeq_epi16(self.0, self.0);
             let max = _mm256_max_epu16(self.0, other.0);
             let ge = _mm256_cmpeq_epi16(self.0, max);
-            let ones = _mm256_cmpeq_epi16(max, max);
             // Test that ge is all ones.
             _mm256_testc_si256(ge, ones) == 0
         }

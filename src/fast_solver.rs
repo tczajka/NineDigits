@@ -324,16 +324,16 @@ impl SearchState {
     }
 
     fn select_branch_band(&self) -> VariableBigCoord {
-        // TODO: Select the band with the smallest or larger number of undecided variables.
         Small::<3>::all()
             .map(VariableBigCoord::HBand)
             .chain(Small::<3>::all().map(VariableBigCoord::VBand))
-            .find(|&big_coord| {
-                !self.variables[big_coord.encode()]
+            .min_by_key(|&big_coord| {
+                self.variables[big_coord.encode()]
                     .undecided()
-                    .is_all_empty()
+                    .total_count()
+                    .wrapping_sub(1) // converts 0 to MAX
             })
-            .expect("No undecided variables")
+            .unwrap()
     }
 
     // `None` if the search isn't finished.

@@ -54,6 +54,10 @@ macro_rules! define_simd_256 {
                 }
                 None
             }
+
+            pub fn total_popcount(self) -> u32 {
+                self.0[0].total_popcount() + self.0[1].total_popcount()
+            }
         }
 
         impl From<[$elem; $n]> for $simd {

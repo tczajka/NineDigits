@@ -140,6 +140,17 @@ fn test_simd4x32_add() {
 }
 
 #[test]
+fn test_simd4x32_total_popcount() {
+    let x = Simd4x32::from([
+        0b11111111111111111111111111111111,
+        0b00000000000000000000000010101010,
+        0b10101100000000000000000000000000,
+        0b11111111011111111111111111111111,
+    ]);
+    assert_eq!(x.total_popcount(), 32 + 4 + 4 + 31);
+}
+
+#[test]
 fn test_simd4x64_array() {
     let arr: [u64; 4] = [1, 2, 3, 4];
     assert_eq!(<[u64; 4]>::from(Simd4x64::from(arr)), arr);
@@ -193,6 +204,17 @@ fn test_simd4x64_first_bit() {
     assert_eq!(x.first_bit(), Some((Small::new(1), Small::new(2))));
     assert_eq!(y.first_bit(), Some((Small::new(2), Small::new(3))));
     assert_eq!(Simd4x64::zero().first_bit(), None);
+}
+
+#[test]
+fn test_simd4x64_total_popcount() {
+    let x = Simd4x64::from([
+        0b1111111111111111111111111111111111111111111111111111111111111111,
+        0b0000000000000000000000001010101000001000000000000000000000100010,
+        0b1010110000000000000000000000000000000000000000000000000000000001,
+        0b1111111101111111111111111111111111111111111111111111111111111111,
+    ]);
+    assert_eq!(x.total_popcount(), 64 + 7 + 5 + 63);
 }
 
 #[test]

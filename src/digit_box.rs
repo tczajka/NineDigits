@@ -250,6 +250,10 @@ impl DigitBox {
         Box4x4x16(self.0 .0.popcount_9())
     }
 
+    pub fn total_count(self) -> u32 {
+        self.0 .0.total_popcount()
+    }
+
     /// Returns 0xffff for equal values, 0 otherwise.
     pub fn masks_eq(self, other: Self) -> Box4x4x16 {
         self.0.masks_eq(other.0)

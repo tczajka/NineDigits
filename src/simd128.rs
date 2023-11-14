@@ -14,6 +14,7 @@ use std::{
 use std::arch::x86_64::{
     __m128i,
     // SSE2
+    _mm_add_epi8,
     _mm_add_epi16,
     _mm_add_epi32,
     _mm_and_si128,
@@ -21,10 +22,13 @@ use std::arch::x86_64::{
     _mm_blend_epi16,
     _mm_cmpeq_epi16,
     _mm_cvtsi32_si128,
+    _mm_cvtsi128_si32,
     _mm_cmpeq_epi8,
     _mm_loadu_si128,
     _mm_max_epu16,
     _mm_movemask_epi8,
+    _mm_sad_epu8,
+    _mm_set1_epi8,
     _mm_set1_epi16,
     _mm_set1_epi64x,
     _mm_setr_epi8,
@@ -94,6 +98,10 @@ macro_rules! define_simd_128 {
             pub fn first_bit(self) -> Option<(Small<$n>, Small<{ <$elem>::BITS as usize }>)> {
                 let bit = first_bit_128(self.0)?;
                 Some(Small::split(bit))
+            }
+
+            pub fn total_popcount(self) -> u32 {
+                popcount_128(self.0)
             }
         }
 
@@ -363,4 +371,20 @@ fn first_bit_128(a: __m128i) -> Option<Small<128>> {
     // SAFETY: byte is non-zero, trailing_zeros is 0..8.
     let first_bit: Small<8> = unsafe { Small::new_unchecked(byte.trailing_zeros() as u8) };
     Some(Small::combine(first_byte, first_bit))
+}
+
+fn popcount_128(a: __m128i) -> u32 {
+    unsafe {
+        let popcount_4_table = _mm_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+        let mask_04 = _mm_set1_epi8(0b1111);
+        let bits_04 = _mm_and_si128(a, mask_04);
+        let sum_04 = _mm_shuffle_epi8(popcount_4_table, bits_04);
+        let bits_48 = _mm_and_si128(_mm_srli_epi16::<4>(a), mask_04);
+        let sum_48 = _mm_shuffle_epi8(popcount_4_table, bits_48);
+        let sum_8 = _mm_add_epi8(sum_04, sum_48);
+        let sum_64 = _mm_sad_epu8(sum_8, _mm_setzero_si128());
+        let sum_high = _mm_unpackhi_epi64(sum_64, _mm_setzero_si128());
+        let sum = _mm_add_epi32(sum_64, sum_high);
+        _mm_cvtsi128_si32(sum) as u32
+    }
 }

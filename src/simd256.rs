@@ -9,7 +9,9 @@ use std::arch::x86_64::{
     _mm_setr_epi8,
     // AVX2
     __m256i,
+    _mm256_add_epi8,
     _mm256_add_epi16,
+    _mm256_add_epi64,
     _mm256_and_si256,
     _mm256_andnot_si256,
     _mm256_blend_epi32,
@@ -17,11 +19,14 @@ use std::arch::x86_64::{
     _mm256_blendv_epi8,
     _mm256_cmpeq_epi16,
     _mm256_cmpeq_epi8,
+    _mm256_cvtsi256_si32,
     _mm256_loadu_si256,
     _mm256_max_epu16,
     _mm256_movemask_epi8,
     _mm256_or_si256,
     _mm256_permute4x64_epi64,
+    _mm256_sad_epu8,
+    _mm256_set1_epi8,
     _mm256_set1_epi16,
     _mm256_set1_epi64x,
     _mm256_setr_m128i,
@@ -33,6 +38,7 @@ use std::arch::x86_64::{
     _mm256_storeu_si256,
     _mm256_testc_si256,
     _mm256_testz_si256,
+    _mm256_unpackhi_epi64,
     _mm256_xor_si256,
 };
 use crate::small::{CartesianProduct, Small};
@@ -89,6 +95,10 @@ macro_rules! define_simd_256 {
             pub fn first_bit(self) -> Option<(Small<$n>, Small<{ <$elem>::BITS as usize }>)> {
                 let bit = first_bit_256(self.0)?;
                 Some(Small::split(bit))
+            }
+
+            pub fn total_popcount(self) -> u32 {
+                popcount_256(self.0)
             }
         }
 
@@ -313,4 +323,23 @@ fn first_bit_256(a: __m256i) -> Option<Small<256>> {
     // SAFETY: byte is non-zero, trailing_zeros is 0..8.
     let first_bit: Small<8> = unsafe { Small::new_unchecked(byte.trailing_zeros() as u8) };
     Some(Small::combine(first_byte, first_bit))
+}
+
+fn popcount_256(a: __m256i) -> u32 {
+    unsafe {
+        let popcount_4_table_128 = _mm_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+        let popcount_4_table = _mm256_setr_m128i(popcount_4_table_128, popcount_4_table_128);
+        let mask_04 = _mm256_set1_epi8(0b1111);
+        let bits_04 = _mm256_and_si256(a, mask_04);
+        let sum_04 = _mm256_shuffle_epi8(popcount_4_table, bits_04);
+        let bits_48 = _mm256_and_si256(_mm256_srli_epi16::<4>(a), mask_04);
+        let sum_48 = _mm256_shuffle_epi8(popcount_4_table, bits_48);
+        let sum_8 = _mm256_add_epi8(sum_04, sum_48);
+        let sum_64 = _mm256_sad_epu8(sum_8, _mm256_setzero_si256());
+        let sum_top_64 = _mm256_unpackhi_epi64(sum_64, _mm256_setzero_si256());
+        let sum_128 = _mm256_add_epi64(sum_64, sum_top_64);
+        let sum_top_128 = _mm256_permute4x64_epi64::<0b11_10_11_10>(sum_128);
+        let sum = _mm256_add_epi64(sum_128, sum_top_128);
+        _mm256_cvtsi256_si32(sum) as u32
+    }
 }

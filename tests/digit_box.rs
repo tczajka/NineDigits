@@ -170,6 +170,7 @@ fn test_counts() {
     let expected: Box4x4x16 = [[1, 2, 3, 9], [2, 0, 4, 3], [3, 0, 2, 1], [8, 3, 3, 4]].into();
 
     assert_eq!(digit_box.counts(), expected);
+    assert_eq!(digit_box.total_count(), 48);
 }
 
 #[test]

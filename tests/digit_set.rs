@@ -31,9 +31,19 @@ fn test_digit_set() {
 fn test_digit_set_bitops() {
     let a: DigitSet = "142".parse().unwrap();
     let b: DigitSet = "245".parse().unwrap();
-    let c: DigitSet = "24".parse().unwrap();
-    assert_eq!(a & b, c);
+    let expected_and: DigitSet = "24".parse().unwrap();
+    let expected_or: DigitSet = "1245".parse().unwrap();
+    let expected_and_not: DigitSet = "1".parse().unwrap();
+
+    assert_eq!(a & b, expected_and);
     let mut x = a;
     x &= b;
-    assert_eq!(x, c);
+    assert_eq!(x, expected_and);
+
+    assert_eq!(a | b, expected_or);
+    let mut x = a;
+    x |= b;
+    assert_eq!(x, expected_or);
+
+    assert_eq!(a.and_not(b), expected_and_not);
 }

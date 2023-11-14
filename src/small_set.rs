@@ -1,5 +1,5 @@
 use crate::{bits::Bits, small::Small};
-use std::ops::{BitAnd, BitAndAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -12,16 +12,28 @@ impl<const L: usize, T: Bits> SmallSet<L, T> {
         Self(T::low_bits(L as u8))
     }
 
+    pub fn is_empty(self) -> bool {
+        self.0 == T::ZERO
+    }
+
+    pub fn only(x: Small<L>) -> Self {
+        Self(T::single_bit(u8::from(x)))
+    }
+
     pub fn contains(self, x: Small<L>) -> bool {
-        self.0 & T::single_bit(u8::from(x)) != T::ZERO
+        !(self & Self::only(x)).is_empty()
     }
 
     pub fn insert(&mut self, x: Small<L>) {
-        self.0 |= T::single_bit(u8::from(x));
+        *self |= Self::only(x);
     }
 
     pub fn remove(&mut self, x: Small<L>) {
-        self.0 &= !T::single_bit(u8::from(x));
+        *self = self.and_not(Self::only(x));
+    }
+
+    pub fn and_not(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
     }
 
     pub fn size(self) -> u8 {
@@ -71,5 +83,19 @@ impl<const L: usize, T: Bits> BitAnd for SmallSet<L, T> {
 impl<const L: usize, T: Bits> BitAndAssign for SmallSet<L, T> {
     fn bitand_assign(&mut self, rhs: Self) {
         *self = *self & rhs;
+    }
+}
+
+impl<const L: usize, T: Bits> BitOr for SmallSet<L, T> {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl<const L: usize, T: Bits> BitOrAssign for SmallSet<L, T> {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
     }
 }

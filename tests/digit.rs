@@ -16,6 +16,12 @@ fn test_digit() {
 }
 
 #[test]
+fn test_digit_all() {
+    let v: Vec<String> = Digit::all().map(|d| d.to_string()).collect();
+    assert_eq!(v, ["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+}
+
+#[test]
 fn test_optional_digit() {
     assert_eq!(OptionalDigit::try_from('?'), Err(InvalidInput));
 

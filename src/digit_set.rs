@@ -5,7 +5,7 @@ use crate::{
 };
 use std::{
     fmt::{self, Debug, Display, Formatter},
-    ops::{BitAnd, BitAndAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign},
     str::FromStr,
 };
 
@@ -20,6 +20,14 @@ impl DigitSet {
         Self(SmallSet::all())
     }
 
+    pub fn is_empty(self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn only(digit: Digit) -> Self {
+        Self(SmallSet::only(digit.into()))
+    }
+
     pub fn contains(self, digit: Digit) -> bool {
         self.0.contains(digit.into())
     }
@@ -30,6 +38,10 @@ impl DigitSet {
 
     pub fn remove(&mut self, digit: Digit) {
         self.0.remove(digit.into())
+    }
+
+    pub fn and_not(self, other: Self) -> Self {
+        Self(self.0.and_not(other.0))
     }
 
     pub fn size(self) -> u8 {
@@ -103,5 +115,19 @@ impl BitAnd for DigitSet {
 impl BitAndAssign for DigitSet {
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
+    }
+}
+
+impl BitOr for DigitSet {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for DigitSet {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
     }
 }

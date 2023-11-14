@@ -5,6 +5,12 @@ use std::fmt::Display;
 #[repr(transparent)]
 pub struct Digit(Small<9>);
 
+impl Digit {
+    pub fn all() -> impl Iterator<Item = Self> {
+        Small::all().map(Self)
+    }
+}
+
 impl From<Digit> for Small<9> {
     fn from(digit: Digit) -> Self {
         digit.0

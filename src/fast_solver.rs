@@ -719,9 +719,17 @@ impl Variables4x4x9 {
     }
 
     fn select_branch_within_band(&self) -> ([Small<3>; 2], Digit) {
-        // TODO: Select the least/most undecided digit.
-        let ([big0, big1], digit) = self
-            .undecided()
+        let undecided = self.undecided();
+
+        let digit = Digit::all()
+            .min_by_key(|&digit| {
+                (undecided & DigitBox::fill(DigitSet::only(digit)))
+                    .total_count()
+                    .wrapping_sub(1) // converts 0 to MAX
+            })
+            .unwrap();
+
+        let ([big0, big1], _) = (undecided & DigitBox::fill(DigitSet::only(digit)))
             .first_digit()
             .expect("No undecided variables");
         ([big0.try_into().unwrap(), big1.try_into().unwrap()], digit)

@@ -1,6 +1,6 @@
-use crate::board::{Board, FullMove, Move};
+use crate::board::{FullMove, Move};
 
-trait Player {
-    fn opponent_move(&mut self, board: &Board, mov: Move);
-    fn choose_move(&mut self, board: &Board) -> FullMove;
+pub trait Player {
+    fn opponent_move(&mut self, mov: Move);
+    fn choose_move(&mut self) -> FullMove;
 }

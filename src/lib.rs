@@ -1,4 +1,5 @@
 #![warn(unsafe_op_in_unsafe_fn)]
+#![allow(clippy::new_without_default)]
 
 pub mod basic_solver; // submission::skip
 pub mod bits;
@@ -13,6 +14,7 @@ pub mod fast_solver;
 pub mod log;
 pub mod platform;
 pub mod player;
+pub mod player_main;
 pub mod queue;
 pub mod random;
 pub mod simd128;

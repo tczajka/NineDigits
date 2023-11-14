@@ -87,7 +87,7 @@ impl Board {
     }
 
     pub fn make_move(&mut self, mov: Move) {
-        debug_assert!(self.empty.contains(mov.square));
+        assert!(self.empty.contains(mov.square));
         self.squares[mov.square] = mov.digit.into();
         self.empty.remove(mov.square);
     }

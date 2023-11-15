@@ -40,11 +40,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn generate(max_solutions: u64, rng: &mut RandomGenerator) -> Board {
-    let mut board = Board::empty();
+    let mut board = Board::new();
     loop {
         let mov = random_move(&board, rng);
         let mut board2 = board;
-        board2.make_move(mov);
+        board2.make_move(mov).unwrap();
         let num_solutions = count_solutions(&board2, max_solutions);
         if num_solutions == 0 {
             continue;

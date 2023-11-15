@@ -13,6 +13,8 @@ pub fn run_codecup_interaction() -> io::Result<()> {
     let mut time_used = Duration::ZERO;
     let mut player = None;
 
+    let time_limit = Duration::from_millis(29_800);
+
     loop {
         line.clear();
         if input.read_line(&mut line)? == 0 {
@@ -23,7 +25,7 @@ pub fn run_codecup_interaction() -> io::Result<()> {
         if player.is_none() {
             player = Some(PlayerMain::new());
             let t = Instant::now();
-            time_used += t - start_time;
+            time_used += t.saturating_duration_since(start_time);
             start_time = t;
             log::write_line!(Info, "init {:?}", time_used);
         }
@@ -48,7 +50,10 @@ pub fn run_codecup_interaction() -> io::Result<()> {
             }
         }
 
-        let mov = player.as_mut().unwrap().choose_move();
+        let mov = player
+            .as_mut()
+            .unwrap()
+            .choose_move(start_time, time_limit.saturating_sub(time_used));
 
         time_used += start_time.elapsed();
         log::write_line!(Info, "send {mov} time {time_used:?}");

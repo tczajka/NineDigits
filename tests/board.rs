@@ -57,7 +57,7 @@ fn test_board() {
     assert!(!board.empty_squares().contains(Small::new(79)));
 
     let mov = "Cd7".parse::<Move>().unwrap();
-    board.make_move(mov);
+    board.make_move(mov).unwrap();
     assert_eq!(
         board.to_string(),
         "000000000000000000000700000000000000000000000000000000000000000000000000000001290"
@@ -77,7 +77,6 @@ fn test_filled_board() {
     assert_eq!(board.to_string(), board_str);
 
     let board: Board = board_str.parse().unwrap();
-    // Safety: No zeroes in `board_str`.
-    let filled_board = board.into_filled();
+    let filled_board = board.into_filled().unwrap();
     assert_eq!(filled_board.to_string(), board_str);
 }

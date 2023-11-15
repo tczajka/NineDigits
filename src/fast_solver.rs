@@ -343,7 +343,7 @@ impl SearchState {
                 return None;
             }
         }
-        let mut board = Board::empty();
+        let mut board = Board::new();
         for big0 in Small::<3>::all() {
             for big1 in Small::<3>::all() {
                 let big_coord = VariableBigCoord::Box([big0, big1]);
@@ -361,12 +361,12 @@ impl SearchState {
                         let digit = digit_set.smallest().unwrap();
                         digit_set.remove(digit);
                         assert_eq!(digit_set, DigitSet::EMPTY);
-                        board.make_move(Move { square, digit });
+                        board.make_move(Move { square, digit }).unwrap();
                     }
                 }
             }
         }
-        Some(board.into_filled())
+        Some(board.into_filled().unwrap())
     }
 }
 

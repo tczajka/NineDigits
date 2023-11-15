@@ -77,8 +77,7 @@ impl Solver for BasicSolver {
             state = self.remaining.pop().unwrap();
         }
 
-        // Safety: `state` is fully solved.
-        SolverStep::Found(state.board.into_filled())
+        SolverStep::Found(state.board.into_filled().unwrap())
     }
 }
 
@@ -92,14 +91,14 @@ struct SearchState {
 impl SearchState {
     fn new() -> Self {
         SearchState {
-            board: Board::empty(),
+            board: Board::new(),
             line_possibilities: [[[DigitSet::all(); 3]; 3]; 2],
             box_possibilities: [[DigitSet::all(); 3]; 3],
         }
     }
 
     fn make_move(&mut self, mov: Move) {
-        self.board.make_move(mov);
+        self.board.make_move(mov).unwrap();
         let coord = Coordinates::from(mov.square);
         self.line_possibilities[0][coord.big[0]][coord.small[0]].remove(mov.digit);
         self.line_possibilities[1][coord.big[1]][coord.small[1]].remove(mov.digit);

@@ -71,7 +71,7 @@ pub struct Board {
 pub type SquareSet = SmallSet<81, u128>;
 
 impl Board {
-    pub fn empty() -> Self {
+    pub fn new() -> Self {
         Self {
             squares: [OptionalDigit::NONE; 81],
             empty: SquareSet::all(),
@@ -86,21 +86,26 @@ impl Board {
         self.empty
     }
 
-    pub fn make_move(&mut self, mov: Move) {
-        assert!(self.empty.contains(mov.square));
+    pub fn make_move(&mut self, mov: Move) -> Result<(), InvalidInput> {
+        if !self.empty.contains(mov.square) {
+            return Err(InvalidInput);
+        }
         self.squares[mov.square] = mov.digit.into();
         self.empty.remove(mov.square);
+        Ok(())
     }
 
     /// # Panics
     ///
     /// Panics if there are any empty equares.
-    pub fn into_filled(self) -> FilledBoard {
-        assert!(self.empty == SquareSet::EMPTY);
-        FilledBoard {
+    pub fn into_filled(self) -> Option<FilledBoard> {
+        if self.empty != SquareSet::EMPTY {
+            return None;
+        }
+        Some(FilledBoard {
             // Safety: None of the squares are `NONE` and the representation are all `u8`.
             squares: unsafe { mem::transmute(self.squares) },
-        }
+        })
     }
 }
 
@@ -140,6 +145,7 @@ impl FromStr for Board {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[repr(transparent)]
 pub struct FilledBoard {
     pub squares: [Digit; 81],
 }

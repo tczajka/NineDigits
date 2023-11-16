@@ -119,9 +119,3 @@ impl Player for PlayerMain {
         }
     }
 }
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum ResourcesExceeded {
-    Time,
-    Memory,
-}

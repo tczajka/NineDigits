@@ -13,3 +13,9 @@ impl Display for InvalidInput {
 }
 
 impl Error for InvalidInput {}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ResourcesExceeded {
+    Time,
+    Memory,
+}

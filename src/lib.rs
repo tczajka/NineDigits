@@ -9,6 +9,7 @@ pub mod codecup;
 pub mod digit;
 pub mod digit_box;
 pub mod digit_set;
+pub mod endgame;
 pub mod error;
 pub mod fast_solver;
 pub mod log;

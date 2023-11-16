@@ -27,7 +27,7 @@ pub fn run_codecup_interaction() -> io::Result<()> {
             let t = Instant::now();
             time_used += t.saturating_duration_since(start_time);
             start_time = t;
-            log::write_line!(Info, "init {:?}", time_used);
+            log::write_line!(Info, "init {:.3?}", time_used);
         }
 
         let command = line.trim();
@@ -56,7 +56,7 @@ pub fn run_codecup_interaction() -> io::Result<()> {
             .choose_move(start_time, time_limit.saturating_sub(time_used));
 
         time_used += start_time.elapsed();
-        log::write_line!(Info, "send {mov} time {time_used:?}");
+        log::write_line!(Info, "send {mov} time {time_used:.3?}");
         writeln!(output, "{mov}")?;
         output.flush()?;
     }

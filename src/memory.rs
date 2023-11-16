@@ -1,11 +1,12 @@
+use crate::{error::ResourcesExceeded, log};
 use std::{
+    fmt::{self, Debug, Formatter},
     mem::{self, MaybeUninit},
     slice,
 };
 
-use crate::{error::ResourcesExceeded, log};
-
 pub struct Memory(Vec<MaybeUninit<u8>>);
+
 pub struct MemoryRemaining<'a>(&'a mut [MaybeUninit<u8>]);
 
 impl Memory {
@@ -18,6 +19,14 @@ impl Memory {
     /// Get memory.
     pub fn into_remaining(&mut self) -> MemoryRemaining {
         MemoryRemaining(&mut self.0)
+    }
+}
+
+impl Debug for Memory {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Memory")
+            .field("size", &self.0.len())
+            .finish()
     }
 }
 
@@ -43,5 +52,13 @@ impl MemoryRemaining<'_> {
         }
         let slice = unsafe { slice::from_raw_parts_mut(p, n) };
         Ok((slice, MemoryRemaining(tail)))
+    }
+}
+
+impl Debug for MemoryRemaining<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MemoryRemaining")
+            .field("size", &self.0.len())
+            .finish()
     }
 }

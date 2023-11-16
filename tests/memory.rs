@@ -1,4 +1,4 @@
-use sudoku_game::memory::Memory;
+use sudoku_game::{error::ResourcesExceeded, memory::Memory};
 
 #[test]
 fn test_memory() {
@@ -8,5 +8,8 @@ fn test_memory() {
     let (y, mut rem3) = rem2.allocate_slice(1, 4u32).unwrap();
     assert_eq!(x, [3, 3]);
     assert_eq!(y, [4]);
-    assert!(rem3.allocate_slice(5, 5u32).is_err());
+    assert_eq!(
+        rem3.allocate_slice(5, 5u32).unwrap_err(),
+        ResourcesExceeded::Memory
+    );
 }

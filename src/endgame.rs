@@ -99,15 +99,20 @@ impl Endgame {
             }
         }
 
-        let mut compressed_solutions: Vec<u8> =
-            Vec::with_capacity(solutions.len() * empty_squares.len());
+        let mut memory = self.memory.into_remaining();
+        let (compressed_solutions, mut memory) = memory
+            .allocate_slice::<u8>(solutions.len() * empty_squares.len())
+            .expect("out of memory");
 
+        let mut compressed_solutions_next = 0;
         for solution in solutions {
             for &square in empty_squares.iter() {
                 let digit = solution.squares[square];
-                compressed_solutions.push(u8::from(Small::from(digit)));
+                compressed_solutions[compressed_solutions_next] = u8::from(Small::from(digit));
+                compressed_solutions_next += 1;
             }
         }
+        assert_eq!(compressed_solutions_next, compressed_solutions.len());
 
         let position = EndgamePosition {
             board,
@@ -117,7 +122,6 @@ impl Endgame {
 
         moves.sort_by_key(|x| x.solution_count);
 
-        let mut memory = self.memory.into_remaining();
         let mut result = Some(false);
 
         for &mov in moves.iter() {

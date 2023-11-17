@@ -10,7 +10,6 @@ use crate::{
     solver::generate_solutions,
 };
 
-#[derive(Debug)]
 pub struct PlayerMain {
     board: Board,
     solutions_generated: bool,
@@ -79,8 +78,8 @@ impl Player for PlayerMain {
         if self.solutions_generated {
             let (result, mov) = self
                 .endgame
-                .solve_best_effort(&self.solutions, start_time + time_left / 10);
-            if let Some(win) = result {
+                .solve(&self.solutions, start_time + time_left / 10);
+            if let Ok(win) = result {
                 log::write_line!(Info, "{}", if win { "win" } else { "lose" });
             }
             mov

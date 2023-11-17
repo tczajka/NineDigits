@@ -1,42 +1,33 @@
 use crate::{error::ResourcesExceeded, log};
 use std::{
-    fmt::{self, Debug, Formatter},
     mem::{self, MaybeUninit},
     slice,
 };
 
-pub struct Memory(Vec<MaybeUninit<u8>>);
+pub struct MemoryBuffer(Vec<MaybeUninit<u8>>);
 
 #[derive(Debug)]
-pub struct MemoryRemaining<'a>(&'a mut [MaybeUninit<u8>]);
+pub struct Memory<'a>(&'a mut [MaybeUninit<u8>]);
 
-impl Memory {
+impl MemoryBuffer {
     /// Allocate memory.
-    pub fn new(size: usize) -> Memory {
+    pub fn new(size: usize) -> MemoryBuffer {
         log::write_line!(Info, "allocating {} MB", size >> 20);
         Self(vec![MaybeUninit::uninit(); size])
     }
 
     /// Get memory.
-    pub fn into_remaining(&mut self) -> MemoryRemaining {
-        MemoryRemaining(&mut self.0)
+    pub fn into_memory(&mut self) -> Memory {
+        Memory(&mut self.0)
     }
 }
 
-impl Debug for Memory {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Memory")
-            .field("len", &self.0.len())
-            .finish()
-    }
-}
-
-impl MemoryRemaining<'_> {
+impl Memory<'_> {
     /// Allocate a slice with a given value.
     pub fn allocate_slice<T: Copy + Default>(
         &mut self,
         n: usize,
-    ) -> Result<(&mut [T], MemoryRemaining), ResourcesExceeded> {
+    ) -> Result<(&mut [T], Memory), ResourcesExceeded> {
         let offset = self.0.as_ptr().align_offset(mem::align_of::<T>());
         let size = n * mem::size_of::<T>();
         if self.0.len() < offset + size {
@@ -51,6 +42,6 @@ impl MemoryRemaining<'_> {
             }
         }
         let slice = unsafe { slice::from_raw_parts_mut(p, n) };
-        Ok((slice, MemoryRemaining(tail)))
+        Ok((slice, Memory(tail)))
     }
 }

@@ -330,5 +330,17 @@ fn solve_compressed(
     deadline: Instant,
     memory: &mut Memory,
 ) -> Result<bool, ResourcesExceeded> {
-    todo!()
+    moves.sort_by_key(|x| x.solution_count);
+
+    for &mov in moves.iter() {
+        if mov.solution_count == 1 {
+            // TODO: Impossible -- remove?
+            return Ok(true);
+        } else if mov.solution_count < 4 {
+            // Ignore: a losing move.
+        } else if solve_move(position, mov, deadline, &mut *memory)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

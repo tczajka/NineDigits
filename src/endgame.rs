@@ -16,7 +16,7 @@ pub struct Endgame {
 struct EndgamePosition<'a> {
     board: Board,
     // Corresponds to board.empty_squares().
-    empty_squares: &'a [Small<81>],
+    empty_squares: &'a [Small<81>], // TODO: remove
     solutions: &'a [u8],
 }
 
@@ -99,10 +99,20 @@ impl Endgame {
             }
         }
 
+        let mut compressed_solutions: Vec<u8> =
+            Vec::with_capacity(solutions.len() * empty_squares.len());
+
+        for solution in solutions {
+            for &square in empty_squares.iter() {
+                let digit = solution.squares[square];
+                compressed_solutions.push(u8::from(Small::from(digit)));
+            }
+        }
+
         let position = EndgamePosition {
             board,
             empty_squares: &empty_squares,
-            solutions: &[], // TODO
+            solutions: &compressed_solutions,
         };
 
         moves.sort_by_key(|x| x.solution_count);

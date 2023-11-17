@@ -1,7 +1,7 @@
 use crate::{error::InvalidInput, small::Small};
 use std::fmt::Display;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Digit(Small<9>);
 

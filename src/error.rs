@@ -19,3 +19,14 @@ pub enum ResourcesExceeded {
     Time,
     Memory,
 }
+
+impl Display for ResourcesExceeded {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ResourcesExceeded::Time => write!(f, "time exceeded"),
+            ResourcesExceeded::Memory => write!(f, "memory exceeded"),
+        }
+    }
+}
+
+impl Error for ResourcesExceeded {}

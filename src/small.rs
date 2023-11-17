@@ -59,6 +59,12 @@ impl<const L: usize> From<Small<L>> for usize {
     }
 }
 
+impl<const L: usize> Default for Small<L> {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
 impl<T, const N: usize> Index<Small<N>> for [T; N] {
     type Output = T;
 

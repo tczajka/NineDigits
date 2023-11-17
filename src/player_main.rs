@@ -6,9 +6,8 @@ use crate::{
     error::InvalidInput,
     fast_solver::FastSolver,
     log,
-    memory::Memory,
     player::Player,
-    solver::{generate_solutions, Solver, SolverStep},
+    solver::generate_solutions,
 };
 
 #[derive(Debug)]
@@ -78,8 +77,13 @@ impl Player for PlayerMain {
         }
 
         if self.solutions_generated {
-            self.endgame
-                .choose_move_best_effort(&self.solutions, start_time + time_left / 10)
+            let (result, mov) = self
+                .endgame
+                .solve_best_effort(&self.solutions, start_time + time_left / 10);
+            if let Some(win) = result {
+                log::write_line!(Info, "{}", if win { "win" } else { "lose" });
+            }
+            mov
         } else {
             self.choose_move_without_solutions(start_time + time_left / 10)
         }

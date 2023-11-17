@@ -7,6 +7,7 @@ use std::{
 
 pub struct Memory(Vec<MaybeUninit<u8>>);
 
+#[derive(Debug)]
 pub struct MemoryRemaining<'a>(&'a mut [MaybeUninit<u8>]);
 
 impl Memory {
@@ -25,17 +26,16 @@ impl Memory {
 impl Debug for Memory {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Memory")
-            .field("size", &self.0.len())
+            .field("len", &self.0.len())
             .finish()
     }
 }
 
 impl MemoryRemaining<'_> {
     /// Allocate a slice with a given value.
-    pub fn allocate_slice<T: Copy>(
+    pub fn allocate_slice<T: Copy + Default>(
         &mut self,
         n: usize,
-        val: T,
     ) -> Result<(&mut [T], MemoryRemaining), ResourcesExceeded> {
         let offset = self.0.as_ptr().align_offset(mem::align_of::<T>());
         let size = n * mem::size_of::<T>();
@@ -47,18 +47,10 @@ impl MemoryRemaining<'_> {
         let p = slice.as_mut_ptr() as *mut T;
         for i in 0..n {
             unsafe {
-                p.add(i).write(val);
+                p.add(i).write(T::default());
             }
         }
         let slice = unsafe { slice::from_raw_parts_mut(p, n) };
         Ok((slice, MemoryRemaining(tail)))
-    }
-}
-
-impl Debug for MemoryRemaining<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MemoryRemaining")
-            .field("size", &self.0.len())
-            .finish()
     }
 }

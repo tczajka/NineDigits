@@ -16,7 +16,7 @@ pub struct Endgame {
 struct EndgamePosition<'a> {
     board: Board,
     // Corresponds to board.empty_squares().
-    empty_squares: &'a [Small<81>], // TODO: remove
+    empty_squares: &'a [Small<81>],
     solutions: &'a [u8],
 }
 

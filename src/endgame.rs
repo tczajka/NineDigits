@@ -1,5 +1,5 @@
 use crate::{
-    board::{Board, FilledBoard, FullMove, Move},
+    board::{FilledBoard, FullMove, Move},
     digit::Digit,
     error::ResourcesExceeded,
     log,
@@ -14,8 +14,6 @@ pub struct Endgame {
 
 #[derive(Copy, Clone)]
 struct EndgamePosition<'a> {
-    board: &'a Board,
-    // Corresponds to board.empty_squares().
     empty_squares: &'a [EmptySquare],
     // TODO: We need to store the actual moves rather than num_moves.
     num_moves: u16,
@@ -89,7 +87,6 @@ fn solve_root_uncompressed(
         }
     }
 
-    let mut board = Board::new();
     let mut empty_squares = Vec::with_capacity(81);
     let mut moves = Vec::with_capacity(81 * 9);
 
@@ -115,15 +112,7 @@ fn solve_root_uncompressed(
             }
         }
         assert!(empty_square.num_moves != 0);
-        if empty_square.num_moves == 1 {
-            let mov = moves.pop().unwrap();
-            board
-                .make_move(Move {
-                    square,
-                    digit: mov.original_digit,
-                })
-                .unwrap();
-        } else {
+        if empty_square.num_moves != 1 {
             empty_squares.push(empty_square);
         }
     }
@@ -143,7 +132,6 @@ fn solve_root_uncompressed(
     }
 
     let position = EndgamePosition {
-        board: &board,
         empty_squares: &empty_squares,
         num_moves: moves.len() as u16,
         solutions: compressed_solutions,
@@ -213,7 +201,6 @@ fn solve_move(
     }
 
     let new_position = EndgamePosition {
-        board: position.board,
         empty_squares: position.empty_squares,
         num_moves: position.num_moves,
         solutions: new_solutions,
@@ -245,8 +232,6 @@ fn solve_uncompressed(
     }
     assert!(solution_counts_remaining.is_empty());
 
-    let mut board = *position.board;
-
     // Overallocate empty_squares and moves.
     let (empty_squares, mut memory) =
         memory.allocate_slice::<EmptySquare>(position.empty_squares.len())?;
@@ -277,21 +262,12 @@ fn solve_uncompressed(
                     original_digit: Small::new(0).into(), // TODO: fix, store original digits!
                     solution_count,
                 };
-                num_moves += 1;
                 new_empty_square.num_moves += 1;
             }
         }
         assert!(empty_square.num_moves != 0);
-        if empty_square.num_moves == 1 {
-            num_moves -= 1;
-            let mov = moves[usize::from(num_moves)];
-            board
-                .make_move(Move {
-                    square: empty_square.original,
-                    digit: mov.original_digit,
-                })
-                .unwrap();
-        } else {
+        if empty_square.num_moves != 1 {
+            num_moves += u16::from(new_empty_square.num_moves);
             empty_squares[usize::from(num_empty_squares)] = new_empty_square;
             num_empty_squares += 1;
         }
@@ -315,7 +291,6 @@ fn solve_uncompressed(
     }
 
     let compressed_position = EndgamePosition {
-        board: &board,
         empty_squares,
         num_moves: moves.len() as u16,
         solutions: compressed_solutions,

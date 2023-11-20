@@ -150,6 +150,14 @@ pub struct FilledBoard {
     pub squares: [Digit; 81],
 }
 
+impl FilledBoard {
+    pub fn as_bytes(&self) -> &[u8; 81] {
+        let p = &self.squares as *const [Digit; 81] as *const [u8; 81];
+        // Safety: The representation of `Digit` is `u8`.
+        unsafe { &*p }
+    }
+}
+
 impl Display for FilledBoard {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         for coord in row_major_coordinates() {

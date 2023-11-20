@@ -13,7 +13,6 @@ pub mod endgame;
 pub mod error;
 pub mod fast_solver;
 pub mod log;
-pub mod memory;
 pub mod platform;
 pub mod player;
 pub mod player_main;

@@ -105,7 +105,7 @@ impl RandomGenerator {
         }
     }
 
-    fn random_bits_64(&mut self) -> u64 {
+    pub fn random_bits_64(&mut self) -> u64 {
         if self.block_index == 64 {
             self.block = chacha20_block(&CHACHA_KEY, self.chacha20_nonce, self.chacha20_counter);
             self.chacha20_counter += 1;

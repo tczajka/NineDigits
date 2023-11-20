@@ -80,3 +80,15 @@ fn test_filled_board() {
     let filled_board = board.into_filled().unwrap();
     assert_eq!(filled_board.to_string(), board_str);
 }
+
+#[test]
+fn test_as_bytes() {
+    let filled_board =
+        "242222222222222222222222222222222222222222222222222222222222222222222222222222222"
+            .parse::<FilledBoard>()
+            .unwrap();
+    let mut bytes = [1; 81];
+    bytes[1] = 3;
+
+    assert_eq!(filled_board.as_bytes(), &bytes);
+}

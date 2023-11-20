@@ -1,69 +1,109 @@
 use crate::{
-    board::{Board, FilledBoard, FullMove, Move},
-    digit::{Digit, OptionalDigit},
+    board::{Board, FullMove, Move},
+    digit::Digit,
     error::ResourcesExceeded,
+    fast_solver::FastSolver,
     log,
-    memory::Memory,
+    random::RandomGenerator,
     small::Small,
     solver::{Solver, SolverStep},
 };
 use std::time::Instant;
 
-#[derive(Debug)]
-pub struct Solution {
-    // TODO: Random ID
-    filled_board: FilledBoard,
+pub struct SolutionTable {
+    /// Number of moves for each square.
+    square_moves: Vec<u8>,
+    /// Each solution is: ID_BYTES + square_moves.len().
+    solutions: Vec<u8>,
 }
 
-impl Solution {
-    pub fn matches(&self, mov: Move) -> bool {
-        self.filled_board.squares[mov.square] == mov.digit
+impl SolutionTable {
+    const ID_BYTES: usize = 8;
+
+    pub fn with_capacity(max_solutions: usize) -> Self {
+        Self {
+            square_moves: vec![9; 81],
+            solutions: Vec::with_capacity(max_solutions * (Self::ID_BYTES + 81)),
+        }
     }
-}
 
-pub fn generate_solutions<S: Solver>(
-    board: &Board,
-    solutions: &mut Vec<Solution>,
-    limit: usize,
-    deadline: Instant,
-) -> Result<(), ResourcesExceeded> {
-    const CHECK_TIME_ITERS: u64 = 1024;
+    pub fn clear(&mut self) {
+        self.solutions.clear();
+    }
 
-    solutions.clear();
-    let mut solver = S::new(board);
-    let mut since_last_time_check: u64 = 0;
-    loop {
-        match solver.step() {
-            SolverStep::Found(filled_board) => {
-                if solutions.len() >= limit {
-                    log::write_line!(Info, "solutions > {}!", solutions.len());
-                    return Err(ResourcesExceeded::Memory);
+    pub fn is_empty(&self) -> bool {
+        self.solutions.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.solutions.len() / self.solution_len()
+    }
+
+    pub fn generate(
+        &mut self,
+        board: &Board,
+        limit: usize,
+        deadline: Instant,
+        rng: &mut RandomGenerator,
+    ) -> Result<(), ResourcesExceeded> {
+        const CHECK_TIME_ITERS: u64 = 1024;
+
+        self.clear();
+        let mut solver = FastSolver::new(board);
+        let mut since_last_time_check: u64 = 0;
+        let mut num_solutions = 0;
+        loop {
+            match solver.step() {
+                SolverStep::Found(filled_board) => {
+                    if num_solutions >= limit {
+                        log::write_line!(Info, "solutions > {limit}!");
+                        return Err(ResourcesExceeded::Memory);
+                    }
+                    let id = rng.random_bits_64();
+                    self.solutions.extend_from_slice(&id.to_le_bytes());
+                    self.solutions.extend_from_slice(filled_board.as_bytes());
+                    num_solutions += 1;
                 }
-                solutions.push(Solution { filled_board });
+                SolverStep::NoProgress => {}
+                SolverStep::Done => {
+                    log::write_line!(Info, "Generated all {num_solutions} solutions!");
+                    return Ok(());
+                }
             }
-            SolverStep::NoProgress => {}
-            SolverStep::Done => {
-                log::write_line!(Info, "Generated all {} solutions!", solutions.len());
-                return Ok(());
-            }
-        }
 
-        since_last_time_check += 1;
-        if since_last_time_check >= CHECK_TIME_ITERS {
-            since_last_time_check = 0;
-            if Instant::now() >= deadline {
-                log::write_line!(Info, "Some {} solutions found", solutions.len());
-                return Err(ResourcesExceeded::Time);
+            since_last_time_check += 1;
+            if since_last_time_check >= CHECK_TIME_ITERS {
+                since_last_time_check = 0;
+                if Instant::now() >= deadline {
+                    log::write_line!(Info, "Timeout, {num_solutions} solutions found");
+                    return Err(ResourcesExceeded::Time);
+                }
             }
         }
     }
-}
 
-#[derive(Copy, Clone, Debug)]
-struct EmptySquare {
-    square: u8,
-    num_moves: u8,
-    digit_compression: [OptionalDigit; 9],
+    /// Only works for full board solutions.
+    pub fn filter_move(&mut self, mov: Move) {
+        assert!(self.square_moves.len() == 81);
+        let len = self.solution_len();
+        let offset = Self::ID_BYTES + usize::from(mov.square);
+        let byte = u8::from(Small::from(mov.digit));
+
+        let mut from = 0;
+        let mut to = 0;
+        while from < self.solutions.len() {
+            if self.solutions[from + offset] == byte {
+                self.solutions.copy_within(from..from + len, to);
+                to += len;
+            }
+            from += len;
+        }
+        self.solutions.truncate(to);
+    }
+
+    fn solution_len(&self) -> usize {
+        Self::ID_BYTES + self.square_moves.len()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -73,21 +113,17 @@ struct EndgameMove {
     num_solutions: u32,
 }
 
-pub struct Endgame;
+pub struct EndgameSolver;
 
-impl Endgame {
+impl EndgameSolver {
     pub fn new() -> Self {
         Self
     }
 
-    /// Returns a move even if can't solve.
-    ///
-    /// Panics if `memory` does not have enough space for depth 1 search.
-    pub fn solve_with_move(
+    pub fn solve_best_effort(
         &mut self,
-        solutions: &[Solution],
+        solutions: &SolutionTable,
         deadline: Instant,
-        memory: &mut Memory,
     ) -> (Result<bool, ResourcesExceeded>, FullMove) {
         if solutions.is_empty() {
             log::write_line!(Always, "Error: no solutions!");
@@ -99,6 +135,19 @@ impl Endgame {
             return (Ok(true), FullMove::ClaimUnique);
         }
 
+        todo!()
+    }
+
+    /*
+    /// Returns a move even if can't solve.
+    ///
+    /// Panics if `memory` does not have enough space for depth 1 search.
+    pub fn solve_with_move(
+        &mut self,
+        solutions: &[Solution],
+        deadline: Instant,
+        memory: &mut Memory,
+    ) -> (Result<bool, ResourcesExceeded>, FullMove) {
         let num_solutions_table = Self::count_solutions_root(solutions);
         if let Some(mov) = self.check_quick_win_root(&num_solutions_table) {
             return (Ok(true), mov);
@@ -594,26 +643,5 @@ impl Endgame {
             &mut memory,
         )
     }
+    */
 }
-/*
-fn solve_compressed(
-    position: EndgamePosition,
-    moves: &mut [CompressedMove],
-    deadline: Instant,
-    memory: &mut Memory,
-) -> Result<bool, ResourcesExceeded> {
-    moves.sort_by_key(|x| x.solution_count);
-
-    for &mov in moves.iter() {
-        if mov.solution_count == 1 {
-            // TODO: Impossible -- remove?
-            return Ok(true);
-        } else if mov.solution_count < 4 {
-            // Ignore: a losing move.
-        } else if solve_move(position, mov, deadline, &mut *memory)? {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-*/

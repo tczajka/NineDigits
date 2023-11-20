@@ -3,7 +3,7 @@ use sudoku_game::{error::ResourcesExceeded, memory::MemoryBuffer};
 #[test]
 fn test_memory() {
     let mut a = MemoryBuffer::new(16);
-    let mut remaining = a.into_memory();
+    let mut remaining = a.memory();
     let (x, mut rem2) = remaining.allocate_slice::<u32>(2).unwrap();
     x[0] = 1;
     x[1] = 2;

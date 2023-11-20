@@ -1,43 +1,46 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    board::{Board, FilledBoard, FullMove, Move},
-    endgame::Endgame,
+    board::{Board, FullMove, Move},
+    endgame::{generate_solutions, Endgame, Solution},
     error::InvalidInput,
     fast_solver::FastSolver,
     log,
+    memory::MemoryBuffer,
     player::Player,
-    solver::generate_solutions,
 };
 
 pub struct PlayerMain {
     board: Board,
     solutions_generated: bool,
-    solutions: Vec<FilledBoard>,
+    solutions: Vec<Solution>,
     endgame: Endgame,
+    memory_buffer: MemoryBuffer,
 }
 
 impl PlayerMain {
     // 81 KiB
     const SOLUTION_LIMIT: usize = 1000;
     // 256 MiB
-    const ENDGAME_MEMORY_LIMIT: usize = 256 << 20;
+    const MEMORY_LIMIT: usize = 256 << 20;
 
     pub fn new() -> Self {
         Self {
             board: Board::new(),
             solutions_generated: false,
             solutions: Vec::with_capacity(Self::SOLUTION_LIMIT),
-            endgame: Endgame::new(Self::ENDGAME_MEMORY_LIMIT),
+            endgame: Endgame::new(),
+            memory_buffer: MemoryBuffer::new(Self::MEMORY_LIMIT),
         }
     }
 
     fn make_move(&mut self, mov: Move) -> Result<(), InvalidInput> {
         self.board.make_move(mov)?;
         if self.solutions_generated {
-            self.solutions
-                .retain(|solution| solution.squares[mov.square] == mov.digit);
+            self.solutions.retain(|solution| solution.matches(mov));
             log::write_line!(Info, "solutions: {}", self.solutions.len());
+        } else {
+            self.solutions.clear();
         }
         Ok(())
     }
@@ -76,9 +79,11 @@ impl Player for PlayerMain {
         }
 
         if self.solutions_generated {
-            let (result, mov) = self
-                .endgame
-                .solve(&self.solutions, start_time + time_left / 10);
+            let (result, mov) = self.endgame.solve_with_move(
+                &self.solutions,
+                start_time + time_left / 10,
+                &mut self.memory_buffer.memory(),
+            );
             if let Ok(win) = result {
                 log::write_line!(Info, "{}", if win { "win" } else { "lose" });
             }

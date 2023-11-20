@@ -17,16 +17,25 @@ impl MemoryBuffer {
     }
 
     /// Get memory.
-    pub fn into_memory(&mut self) -> Memory {
+    pub fn memory(&mut self) -> Memory {
         Memory(&mut self.0)
     }
 }
 
 impl Memory<'_> {
-    /// Allocate a slice with a given value.
+    /// Allocate a slice with the default value.
     pub fn allocate_slice<T: Copy + Default>(
         &mut self,
         n: usize,
+    ) -> Result<(&mut [T], Memory), ResourcesExceeded> {
+        self.allocate_slice_value(n, T::default())
+    }
+
+    /// Allocate a slice with a given value.
+    pub fn allocate_slice_value<T: Copy>(
+        &mut self,
+        n: usize,
+        val: T,
     ) -> Result<(&mut [T], Memory), ResourcesExceeded> {
         let offset = self.0.as_ptr().align_offset(mem::align_of::<T>());
         let size = n * mem::size_of::<T>();
@@ -38,7 +47,7 @@ impl Memory<'_> {
         let p = slice.as_mut_ptr() as *mut T;
         for i in 0..n {
             unsafe {
-                p.add(i).write(T::default());
+                p.add(i).write(val);
             }
         }
         let slice = unsafe { slice::from_raw_parts_mut(p, n) };

@@ -1,5 +1,8 @@
 use crate::{error::InvalidInput, small::Small};
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    ops::{Index, IndexMut},
+};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
@@ -29,6 +32,20 @@ impl From<Digit> for char {
     }
 }
 
+impl<T> Index<Digit> for [T; 9] {
+    type Output = T;
+
+    fn index(&self, index: Digit) -> &T {
+        &self[Small::from(index)]
+    }
+}
+
+impl<T> IndexMut<Digit> for [T; 9] {
+    fn index_mut(&mut self, index: Digit) -> &mut T {
+        &mut self[Small::from(index)]
+    }
+}
+
 impl TryFrom<char> for Digit {
     type Error = InvalidInput;
 
@@ -52,7 +69,6 @@ impl Display for Digit {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-
 pub struct OptionalDigit(Small<10>);
 
 impl OptionalDigit {

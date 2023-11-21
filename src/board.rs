@@ -242,6 +242,16 @@ pub enum FullMove {
     ClaimUnique,
 }
 
+impl FullMove {
+    pub fn to_move(self) -> Option<Move> {
+        match self {
+            Self::Move(mov) => Some(mov),
+            Self::MoveClaimUnique(mov) => Some(mov),
+            Self::ClaimUnique => None,
+        }
+    }
+}
+
 impl Display for FullMove {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {

@@ -92,7 +92,7 @@ impl Player for PlayerMain {
             }
         }
 
-        if self.all_solutions_generated {
+        let mov = if self.all_solutions_generated {
             let (result, mov) = self
                 .endgame_solver
                 .solve_best_effort(&self.solutions, start_time + time_left / 10);
@@ -110,6 +110,10 @@ impl Player for PlayerMain {
             mov
         } else {
             self.choose_move_without_solutions(start_time + time_left / 10)
+        };
+        if let Some(mov) = mov.to_move() {
+            self.make_move(mov).unwrap();
         }
+        mov
     }
 }

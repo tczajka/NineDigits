@@ -67,28 +67,45 @@ impl Player for PlayerMain {
                 &mut self.rng,
             );
             self.solutions = solutions;
-            if res.is_ok() {
-                self.all_solutions_generated = true;
-            }
 
             let t = Instant::now();
             let used_time = t.saturating_duration_since(start_time);
             time_left = time_left.saturating_sub(t - start_time);
             start_time = t;
 
-            log::write_line!(
-                Info,
-                "solutions count={count} res={res:?} time={used_time:.3?}",
-                count = self.solutions.len()
-            );
+            match res {
+                Ok(()) => {
+                    self.all_solutions_generated = true;
+                    log::write_line!(
+                        Info,
+                        "All solutions generated count={count} time={used_time:.3?}",
+                        count = self.solutions.len(),
+                    );
+                }
+                Err(e) => {
+                    log::write_line!(
+                        Info,
+                        "solutions count={count} time={used_time:.3?} {e}",
+                        count = self.solutions.len(),
+                    );
+                }
+            }
         }
 
         if self.all_solutions_generated {
             let (result, mov) = self
                 .endgame_solver
                 .solve_best_effort(&self.solutions, start_time + time_left / 10);
-            if let Ok(win) = result {
-                log::write_line!(Info, "{}", if win { "win" } else { "lose" });
+            match result {
+                Ok(true) => {
+                    log::write_line!(Info, "endgame win");
+                }
+                Ok(false) => {
+                    log::write_line!(Info, "endgame lose");
+                }
+                Err(e) => {
+                    log::write_line!(Info, "endgame {e}");
+                }
             }
             mov
         } else {

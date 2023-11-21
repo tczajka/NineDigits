@@ -5,8 +5,6 @@ use std::{
 };
 
 pub fn run_codecup_interaction() -> io::Result<()> {
-    log::write_line!(Info, "platform: {}", platform_description());
-
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
     let mut line = String::new();
@@ -23,6 +21,7 @@ pub fn run_codecup_interaction() -> io::Result<()> {
         let mut start_time = Instant::now();
 
         if player.is_none() {
+            log::write_line!(Info, "platform: {}", platform_description());
             player = Some(PlayerMain::new());
             let t = Instant::now();
             time_used += t.saturating_duration_since(start_time);

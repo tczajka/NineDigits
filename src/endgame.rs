@@ -1,13 +1,18 @@
 use crate::{
-    board::FullMove, digit::Digit, error::ResourcesExceeded, log, solution_table::SolutionTable,
+    board::{FullMove, Move},
+    digit::Digit,
+    error::ResourcesExceeded,
+    log,
+    solution_table::{MoveSummary, SolutionTable},
 };
 use std::time::Instant;
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 struct EndgameMove {
     empty_square_index: u8,
     digit: Digit,
     num_solutions: u32,
+    hash: u64,
 }
 
 pub struct EndgameSolver;
@@ -32,7 +37,30 @@ impl EndgameSolver {
             return (Ok(true), FullMove::ClaimUnique);
         }
 
+        let move_summaries = solutions.move_summaries();
+
+        if let Some(mov) = self.check_quick_win_root(&move_summaries) {
+            return (Ok(true), mov);
+        }
+
         todo!()
+    }
+
+    fn check_quick_win_root(&self, move_summaries: &[[MoveSummary; 9]]) -> Option<FullMove> {
+        for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
+            for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
+                if move_summary.num_solutions == 1 {
+                    return Some(FullMove::MoveClaimUnique(Move {
+                        square: square.try_into().unwrap(),
+                        digit,
+                    }));
+                }
+            }
+        }
+
+        // TODO: Enhanced transposition cutoff.
+
+        None
     }
 
     /*
@@ -45,10 +73,6 @@ impl EndgameSolver {
         deadline: Instant,
         memory: &mut Memory,
     ) -> (Result<bool, ResourcesExceeded>, FullMove) {
-        let num_solutions_table = Self::count_solutions_root(solutions);
-        if let Some(mov) = self.check_quick_win_root(&num_solutions_table) {
-            return (Ok(true), mov);
-        }
         let empty_squares = Self::calc_empty_squares_root(&num_solutions_table);
         let (compressed_solutions, mut memory) =
             Self::compress_root_solutions(solutions, &empty_squares, &digit_compression, memory);
@@ -200,62 +224,6 @@ impl EndgameSolver {
             }
         }
         unreachable!()
-    }
-
-    // num_solutions_table[square][digit]
-    fn count_solutions_root(solutions: &[Solution]) -> Box<[[u32; 9]; 81]> {
-        let mut num_solutions_table: Box<[[u32; 9]; 81]> = (0..81)
-            .map(|_| [0; 9])
-            .collect::<Box<[[u32; 9]]>>()
-            .try_into()
-            .unwrap();
-
-        for solution in solutions {
-            for (&digit, counts) in solution
-                .filled_board
-                .squares
-                .iter()
-                .zip(num_solutions_table.iter_mut())
-            {
-                counts[digit] += 1;
-            }
-        }
-
-        num_solutions_table
-    }
-
-    fn count_solutions<'a>(
-        empty_squares: &[EmptySquare],
-        num_moves: usize,
-        solutions: &[u8],
-        memory: &'a mut Memory,
-    ) -> Result<(&'a [[u32; 9]], Memory<'a>), ResourcesExceeded> {
-        let (num_solutions_table, memory) = memory.allocate_slice::<[u32; 9]>(num_moves)?;
-        let solution_len = empty_squares.len();
-
-        for solution in solutions.chunks_exact(solution_len) {
-            for ((digit, empty_square), counts) in solution
-                .iter()
-                .map(|&d| unsafe { Digit::from(Small::new_unchecked(d)) })
-                .zip(empty_squares.iter())
-                .zip(num_solutions_table.iter_mut())
-            {
-                counts[digit] += 1;
-            }
-        }
-        Ok((num_solutions_table, memory))
-    }
-
-    fn check_quick_win_root(&self, num_solutions_table: &[[u32; 9]; 81]) -> Option<FullMove> {
-        // TODO: Check transposition table.
-        for (square, square_solutions_table) in Small::<81>::all().zip(num_solutions_table.iter()) {
-            for (digit, &num_solutions) in Digit::all().zip(square_solutions_table) {
-                if num_solutions == 1 {
-                    return Some(FullMove::MoveClaimUnique(Move { square, digit }));
-                }
-            }
-        }
-        None
     }
 
     fn check_quick_win(&self, num_solutions_table: &[[u32; 9]]) -> bool {

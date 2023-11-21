@@ -59,6 +59,30 @@ impl<const L: usize> From<Small<L>> for usize {
     }
 }
 
+impl<const L: usize> TryFrom<u8> for Small<L> {
+    type Error = InvalidInput;
+
+    fn try_from(x: u8) -> Result<Self, InvalidInput> {
+        if usize::from(x) < L {
+            Ok(Self(x))
+        } else {
+            Err(InvalidInput)
+        }
+    }
+}
+
+impl<const L: usize> TryFrom<usize> for Small<L> {
+    type Error = InvalidInput;
+
+    fn try_from(x: usize) -> Result<Self, InvalidInput> {
+        if x < L {
+            Ok(Self(x as u8))
+        } else {
+            Err(InvalidInput)
+        }
+    }
+}
+
 impl<const L: usize> Default for Small<L> {
     fn default() -> Self {
         Self::new(0)

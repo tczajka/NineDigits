@@ -1,4 +1,7 @@
-use sudoku_game::{digit::Digit, solution_table::SolutionTable};
+use sudoku_game::{
+    digit::{Digit, OptionalDigit},
+    solution_table::SolutionTable,
+};
 
 #[test]
 fn test_solution_table_iter() {
@@ -43,4 +46,71 @@ fn test_solution_table_filter() {
     );
 
     assert!(iter.next().is_none());
+}
+
+#[test]
+fn test_move_summaries() {
+    let mut solution_table = SolutionTable::with_capacity(vec![3, 3, 3], 2);
+    solution_table.append(11, &['1', '2', '3'].map(|c| Digit::try_from(c).unwrap()));
+    solution_table.append(22, &['2', '1', '3'].map(|c| Digit::try_from(c).unwrap()));
+
+    let move_summaries = solution_table.move_summaries();
+    assert_eq!(move_summaries.len(), 3);
+    assert_eq!(move_summaries[0][0].num_solutions, 1);
+    assert_eq!(move_summaries[0][0].hash, 11);
+    assert_eq!(move_summaries[1][0].num_solutions, 1);
+    assert_eq!(move_summaries[1][0].hash, 22);
+    assert_eq!(move_summaries[2][2].num_solutions, 2);
+    assert_eq!(move_summaries[2][2].hash, 11 ^ 22);
+}
+
+#[test]
+fn test_compress() {
+    let mut solution_table = SolutionTable::with_capacity(vec![7, 7, 7], 3);
+    solution_table.append(11, &['6', '3', '5'].map(|c| Digit::try_from(c).unwrap()));
+    solution_table.append(22, &['2', '3', '3'].map(|c| Digit::try_from(c).unwrap()));
+    solution_table.append(33, &['6', '3', '2'].map(|c| Digit::try_from(c).unwrap()));
+
+    let move_summaries = solution_table.move_summaries();
+    let (solution_table, square_compressions) = solution_table.compress(&move_summaries);
+
+    assert_eq!(solution_table.num_moves_per_square(), [2, 3]);
+
+    let mut iter = solution_table.iter();
+    let sol = iter.next().unwrap();
+    assert_eq!(sol.id(), 11);
+    assert_eq!(
+        sol.digits(),
+        &['2', '3'].map(|c| Digit::try_from(c).unwrap())
+    );
+    let sol = iter.next().unwrap();
+    assert_eq!(sol.id(), 22);
+    assert_eq!(
+        sol.digits(),
+        &['1', '2'].map(|c| Digit::try_from(c).unwrap())
+    );
+    let sol = iter.next().unwrap();
+    assert_eq!(sol.id(), 33);
+    assert_eq!(
+        sol.digits(),
+        &['2', '1'].map(|c| Digit::try_from(c).unwrap())
+    );
+    assert!(iter.next().is_none());
+
+    assert_eq!(square_compressions.len(), 2);
+    assert_eq!(square_compressions[0].prev_index, 0);
+    assert_eq!(
+        square_compressions[0].digit_map,
+        ['0', '1', '0', '0', '0', '2', '0', '0', '0'].map(|c| OptionalDigit::try_from(c).unwrap())
+    );
+    assert_eq!(square_compressions[0].move_summaries[0].num_solutions, 1);
+    assert_eq!(square_compressions[0].move_summaries[0].hash, 22);
+    assert_eq!(square_compressions[0].move_summaries[1].num_solutions, 2);
+    assert_eq!(square_compressions[0].move_summaries[1].hash, 11 ^ 33);
+    assert_eq!(square_compressions[1].move_summaries[0].num_solutions, 1);
+    assert_eq!(square_compressions[1].move_summaries[0].hash, 33);
+    assert_eq!(square_compressions[1].move_summaries[1].num_solutions, 1);
+    assert_eq!(square_compressions[1].move_summaries[1].hash, 22);
+    assert_eq!(square_compressions[1].move_summaries[2].num_solutions, 1);
+    assert_eq!(square_compressions[1].move_summaries[2].hash, 11);
 }

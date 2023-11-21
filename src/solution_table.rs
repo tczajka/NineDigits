@@ -1,16 +1,17 @@
 use crate::{
     board::Board,
-    digit::Digit,
+    digit::{Digit, OptionalDigit},
     error::ResourcesExceeded,
     fast_solver::FastSolver,
     random::RandomGenerator,
+    small::Small,
     solver::{Solver, SolverStep},
 };
 use std::{slice, time::Instant};
 
 pub struct SolutionTable {
     /// Each square can only contain digits 0..square_moves[sq].
-    square_moves: Vec<u8>,
+    num_moves_per_square: Vec<u8>,
     /// Each solution is: ID_BYTES + square_moves.len().
     solutions: Vec<u8>,
 }
@@ -20,21 +21,38 @@ impl SolutionTable {
 
     pub fn empty() -> Self {
         Self {
-            square_moves: Vec::new(),
+            num_moves_per_square: Vec::new(),
             solutions: Vec::new(),
         }
     }
 
-    pub fn with_capacity(square_moves: Vec<u8>, max_solutions: usize) -> Self {
-        let solution_len = Self::ID_BYTES + square_moves.len();
+    pub fn with_capacity(num_moves_per_square: Vec<u8>, max_solutions: usize) -> Self {
+        let solution_len = Self::ID_BYTES + num_moves_per_square.len();
         Self {
-            square_moves,
+            num_moves_per_square,
             solutions: Vec::with_capacity(max_solutions * solution_len),
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.solutions.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.solutions.len() / self.solution_len()
+    }
+
+    pub fn num_moves_per_square(&self) -> &[u8] {
+        &self.num_moves_per_square
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = SolutionRef<'_>> {
+        let len = self.solution_len();
+        self.solutions.chunks_exact(len).map(SolutionRef)
+    }
+
     pub fn append(&mut self, id: u64, digits: &[Digit]) {
-        assert_eq!(digits.len(), self.square_moves.len());
+        assert_eq!(digits.len(), self.num_moves_per_square.len());
         self.solutions.extend_from_slice(&id.to_le_bytes());
         // Safety: Digits are repr(u8).
         let digit_bytes =
@@ -47,19 +65,6 @@ impl SolutionTable {
         self.solutions.extend_from_slice(other.0);
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.solutions.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.solutions.len() / self.solution_len()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = SolutionRef<'_>> {
-        let len = self.solution_len();
-        self.solutions.chunks_exact(len).map(SolutionRef)
-    }
-
     pub fn generate(
         board: &Board,
         limit: usize,
@@ -68,11 +73,7 @@ impl SolutionTable {
     ) -> (Result<(), ResourcesExceeded>, Self) {
         const CHECK_TIME_ITERS: u64 = 1024;
 
-        let mut table = Self {
-            square_moves: vec![9; 81],
-            solutions: Vec::with_capacity(limit * (Self::ID_BYTES + 81)),
-        };
-
+        let mut table = Self::with_capacity(vec![9; 81], limit);
         let mut solver = FastSolver::new(board);
         let mut since_last_time_check: u64 = 0;
         let mut num_solutions = 0;
@@ -103,7 +104,7 @@ impl SolutionTable {
     }
 
     pub fn filter(&self, capacity: usize, square: usize, digit: Digit) -> Self {
-        let mut table = Self::with_capacity(self.square_moves.clone(), capacity);
+        let mut table = Self::with_capacity(self.num_moves_per_square.clone(), capacity);
         for solution in self.iter() {
             if solution.digits()[square] == digit {
                 table.append_from(solution);
@@ -112,8 +113,77 @@ impl SolutionTable {
         table
     }
 
+    pub fn move_summaries(&self) -> Vec<[MoveSummary; 9]> {
+        let mut summaries = vec![[MoveSummary::default(); 9]; self.num_moves_per_square.len()];
+
+        for solution in self.iter() {
+            let id = solution.id();
+            let digits = solution.digits();
+            for (square, &digit) in digits.iter().enumerate() {
+                let summary = &mut summaries[square][digit];
+                summary.num_solutions += 1;
+                summary.hash ^= id;
+            }
+        }
+        summaries
+    }
+
+    pub fn compress(&self, move_summaries: &[[MoveSummary; 9]]) -> (Self, Vec<SquareCompression>) {
+        assert_eq!(self.num_moves_per_square.len(), move_summaries.len());
+
+        let mut square_compressions = Vec::with_capacity(self.num_moves_per_square.len());
+        let mut compressed_num_moves_per_square =
+            Vec::with_capacity(self.num_moves_per_square.len());
+
+        for (square_index, (&num_moves_sq, move_summaries_sq)) in self
+            .num_moves_per_square
+            .iter()
+            .zip(move_summaries.iter())
+            .enumerate()
+        {
+            let mut compressed_num_moves = 0;
+            let mut square_compression = SquareCompression {
+                prev_index: square_index,
+                digit_map: [OptionalDigit::NONE; 9],
+                move_summaries: [MoveSummary::default(); 9],
+            };
+
+            for (digit, summary) in (0..num_moves_sq).zip(move_summaries_sq.iter()) {
+                let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
+                if summary.num_solutions != 0 {
+                    let new_digit =
+                        Digit::from(unsafe { Small::new_unchecked(compressed_num_moves) });
+                    square_compression.digit_map[digit] = OptionalDigit::from(new_digit);
+                    square_compression.move_summaries[new_digit] = *summary;
+                    compressed_num_moves += 1;
+                }
+            }
+            if compressed_num_moves >= 2 {
+                square_compressions.push(square_compression);
+                compressed_num_moves_per_square.push(compressed_num_moves);
+            }
+        }
+
+        let mut compressed_table = Self::with_capacity(compressed_num_moves_per_square, self.len());
+        let mut compressed_digits = vec![Digit::from(Small::new(0)); square_compressions.len()];
+        for solution in self.iter() {
+            let prev_digits = solution.digits();
+            for (compressed_digit, square_compression) in
+                compressed_digits.iter_mut().zip(square_compressions.iter())
+            {
+                let prev_digit = prev_digits[square_compression.prev_index];
+                let opt_digit = square_compression.digit_map[prev_digit].to_digit();
+                // Safety: digit_map contains prev_digit.
+                *compressed_digit = unsafe { opt_digit.unwrap_unchecked() };
+            }
+            compressed_table.append(solution.id(), &compressed_digits);
+        }
+
+        (compressed_table, square_compressions)
+    }
+
     fn solution_len(&self) -> usize {
-        Self::ID_BYTES + self.square_moves.len()
+        Self::ID_BYTES + self.num_moves_per_square.len()
     }
 }
 
@@ -130,4 +200,19 @@ impl<'a> SolutionRef<'a> {
         // Safety: The solution is always valid digits, Digits is repr(u8).
         unsafe { slice::from_raw_parts::<'a, Digit>(bytes.as_ptr() as *const _, bytes.len()) }
     }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct MoveSummary {
+    pub num_solutions: u32,
+    pub hash: u64,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct SquareCompression {
+    pub prev_index: usize,
+    // prev -> current
+    pub digit_map: [OptionalDigit; 9],
+    // current move summaries
+    pub move_summaries: [MoveSummary; 9],
 }

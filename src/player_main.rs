@@ -2,11 +2,12 @@ use std::time::{Duration, Instant};
 
 use crate::{
     board::{Board, FullMove, Move},
-    endgame::{EndgameSolver, SolutionTable},
+    endgame::EndgameSolver,
     error::InvalidInput,
     log,
     player::Player,
     random::RandomGenerator,
+    solution_table::SolutionTable,
 };
 
 pub struct PlayerMain {
@@ -25,7 +26,7 @@ impl PlayerMain {
         Self {
             board: Board::new(),
             all_solutions_generated: false,
-            solutions: SolutionTable::with_capacity(Self::SOLUTION_LIMIT),
+            solutions: SolutionTable::empty(),
             endgame_solver: EndgameSolver::new(),
             rng: RandomGenerator::with_time_nonce(),
         }
@@ -34,10 +35,12 @@ impl PlayerMain {
     fn make_move(&mut self, mov: Move) -> Result<(), InvalidInput> {
         self.board.make_move(mov)?;
         if self.all_solutions_generated {
-            self.solutions.filter_move(mov);
+            self.solutions =
+                self.solutions
+                    .filter(self.solutions.len(), mov.square.into(), mov.digit);
             log::write_line!(Info, "solutions: {}", self.solutions.len());
         } else {
-            self.solutions.clear();
+            self.solutions = SolutionTable::empty();
         }
         Ok(())
     }
@@ -57,24 +60,27 @@ impl Player for PlayerMain {
 
     fn choose_move(&mut self, mut start_time: Instant, mut time_left: Duration) -> FullMove {
         if !self.all_solutions_generated {
-            if self
-                .solutions
-                .generate(
-                    &self.board,
-                    Self::SOLUTION_LIMIT,
-                    start_time + time_left / 10,
-                    &mut self.rng,
-                )
-                .is_ok()
-            {
+            let (res, solutions) = SolutionTable::generate(
+                &self.board,
+                Self::SOLUTION_LIMIT,
+                start_time + time_left / 10,
+                &mut self.rng,
+            );
+            self.solutions = solutions;
+            if res.is_ok() {
                 self.all_solutions_generated = true;
             }
 
             let t = Instant::now();
             let used_time = t.saturating_duration_since(start_time);
-            log::write_line!(Info, "generate_solutions time {used_time:.3?}");
             time_left = time_left.saturating_sub(t - start_time);
             start_time = t;
+
+            log::write_line!(
+                Info,
+                "solutions count={count} res={res:?} time={used_time:.3?}",
+                count = self.solutions.len()
+            );
         }
 
         if self.all_solutions_generated {

@@ -26,4 +26,5 @@ pub use simd256_emulated as simd256;
 pub mod simd256_emulated;
 pub mod small;
 pub mod small_set;
+pub mod solution_table;
 pub mod solver;

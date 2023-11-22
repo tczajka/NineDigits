@@ -2,11 +2,13 @@ use std::time::{Duration, Instant};
 
 use crate::{
     board::{Board, FullMove, Move},
+    digit::Digit,
     endgame::EndgameSolver,
     error::InvalidInput,
     log,
     player::Player,
     random::RandomGenerator,
+    small::Small,
     solution_table::SolutionTable,
 };
 
@@ -20,7 +22,8 @@ pub struct PlayerMain {
 
 impl PlayerMain {
     // 81 KiB
-    const SOLUTION_LIMIT: usize = 1000;
+    const SOLUTIONS_MIN: usize = 2;
+    const SOLUTIONS_MAX: usize = 1000;
 
     pub fn new() -> Self {
         Self {
@@ -45,9 +48,27 @@ impl PlayerMain {
         Ok(())
     }
 
-    fn choose_move_without_solutions(&mut self, deadline: Instant) -> FullMove {
+    fn choose_move_without_all_solutions(&mut self) -> FullMove {
         assert!(!self.all_solutions_generated);
-        todo!()
+        let num_solutions: u32 = self.solutions.len().try_into().unwrap();
+        assert!(num_solutions >= 2);
+        // Pick move with the largest number of solutions.
+        let move_summaries = self.solutions.move_summaries();
+        let mut best_move = None;
+        let mut best_move_solutions = 0;
+        for (square, move_summaries_sq) in Small::<81>::all().zip(move_summaries.iter()) {
+            for (digit, move_summary) in Digit::all().zip(move_summaries_sq.iter()) {
+                if move_summary.num_solutions == 0 || move_summary.num_solutions == num_solutions {
+                    continue;
+                }
+                if move_summary.num_solutions > best_move_solutions {
+                    best_move = Some(Move { square, digit });
+                    best_move_solutions = move_summary.num_solutions;
+                }
+            }
+        }
+        log::write_line!(Info, "midgame best num_solutions >= {best_move_solutions}");
+        FullMove::Move(best_move.unwrap())
     }
 }
 
@@ -62,7 +83,8 @@ impl Player for PlayerMain {
         if !self.all_solutions_generated {
             let (res, solutions) = SolutionTable::generate(
                 &self.board,
-                Self::SOLUTION_LIMIT,
+                Self::SOLUTIONS_MIN,
+                Self::SOLUTIONS_MAX,
                 start_time + time_left / 10,
                 &mut self.rng,
             );
@@ -109,7 +131,7 @@ impl Player for PlayerMain {
             }
             mov
         } else {
-            self.choose_move_without_solutions(start_time + time_left / 10)
+            self.choose_move_without_all_solutions()
         };
         if let Some(mov) = mov.to_move() {
             self.make_move(mov).unwrap();

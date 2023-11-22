@@ -65,22 +65,26 @@ impl SolutionTable {
         self.solutions.extend_from_slice(other.0);
     }
 
+    // Generate solutions.
+    // `ResourcesExceeded::Memory` if more than `max` solutions.
+    // `ResourcesExceeded::Time` if deadline exceeded and at least `min` solutions.
     pub fn generate(
         board: &Board,
-        limit: usize,
+        min: usize,
+        max: usize,
         deadline: Instant,
         rng: &mut RandomGenerator,
     ) -> (Result<(), ResourcesExceeded>, Self) {
         const CHECK_TIME_ITERS: u64 = 1024;
 
-        let mut table = Self::with_capacity(vec![9; 81], limit);
+        let mut table = Self::with_capacity(vec![9; 81], max);
         let mut solver = FastSolver::new(board);
         let mut since_last_time_check: u64 = 0;
         let mut num_solutions = 0;
         loop {
             match solver.step() {
                 SolverStep::Found(filled_board) => {
-                    if num_solutions >= limit {
+                    if num_solutions >= max {
                         return (Err(ResourcesExceeded::Memory), table);
                     }
                     let id = rng.random_bits_64();
@@ -94,7 +98,7 @@ impl SolutionTable {
             }
 
             since_last_time_check += 1;
-            if since_last_time_check >= CHECK_TIME_ITERS {
+            if since_last_time_check >= CHECK_TIME_ITERS && num_solutions >= min {
                 since_last_time_check = 0;
                 if Instant::now() >= deadline {
                     return (Err(ResourcesExceeded::Time), table);

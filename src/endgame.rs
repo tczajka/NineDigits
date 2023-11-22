@@ -172,7 +172,19 @@ impl EndgameSolver {
             }
         }
 
-        // TODO: Enhanced transposition cutoff.
+        // Enhanced transposition cutoff.
+        for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
+            for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
+                if move_summary.num_solutions >= 4
+                    && self.transposition_table.find(move_summary.hash) == Some(false)
+                {
+                    return Some(FullMove::Move(Move {
+                        square: square.try_into().unwrap(),
+                        digit,
+                    }));
+                }
+            }
+        }
 
         None
     }
@@ -193,8 +205,18 @@ impl EndgameSolver {
             }
         }
 
-        // TODO: Enhanced transposition cutoff.
-
+        // Enhanced transposition cutoff.
+        for (&num_moves, move_summaries_sq) in
+            num_moves_per_square.iter().zip(move_summaries.iter())
+        {
+            for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
+                if move_summary.num_solutions >= 4
+                    && self.transposition_table.find(move_summary.hash) == Some(false)
+                {
+                    return true;
+                }
+            }
+        }
         false
     }
 

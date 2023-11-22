@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    cmp,
+    time::{Duration, Instant},
+};
 
 use crate::{
     board::{Board, FullMove, Move},
@@ -21,7 +24,7 @@ pub struct PlayerMain {
 }
 
 impl PlayerMain {
-    const SOLUTIONS_MIN: usize = 2;
+    const SOLUTIONS_MIN: usize = 100;
     const SOLUTIONS_MAX: usize = 500_000;
     const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
 
@@ -52,23 +55,31 @@ impl PlayerMain {
         assert!(!self.all_solutions_generated);
         let num_solutions: u32 = self.solutions.len().try_into().unwrap();
         assert!(num_solutions >= 2);
-        // Pick move with the largest number of solutions.
+
         let move_summaries = self.solutions.move_summaries();
-        let mut best_move = None;
-        let mut best_move_solutions = 0;
+        let mut move_candidates: Vec<(Move, u32)> = Vec::new();
         for (square, move_summaries_sq) in Small::<81>::all().zip(move_summaries.iter()) {
             for (digit, move_summary) in Digit::all().zip(move_summaries_sq.iter()) {
                 if move_summary.num_solutions == 0 || move_summary.num_solutions == num_solutions {
                     continue;
                 }
-                if move_summary.num_solutions > best_move_solutions {
-                    best_move = Some(Move { square, digit });
-                    best_move_solutions = move_summary.num_solutions;
-                }
+                move_candidates.push((Move { square, digit }, move_summary.num_solutions));
             }
         }
-        log::write_line!(Info, "midgame best num_solutions >= {best_move_solutions}");
-        FullMove::Move(best_move.unwrap())
+        move_candidates.sort_by_key(|x| cmp::Reverse(x.1));
+        let best_solutions = move_candidates[0].1;
+        // Pick a move with at least best_solutions / 2.
+        while move_candidates.last().unwrap().1 < best_solutions / 2 {
+            move_candidates.pop();
+        }
+        let (chosen_move, num_solutions) =
+            move_candidates[self.rng.uniform_usize(move_candidates.len())];
+        log::write_line!(
+            Info,
+            "midgame candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
+            num_candidates = move_candidates.len()
+        );
+        FullMove::Move(chosen_move)
     }
 }
 

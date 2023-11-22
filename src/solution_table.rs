@@ -43,6 +43,7 @@ impl SolutionTable {
     }
 
     pub fn len(&self) -> usize {
+        // TODO: Replace with self.num_solutions to avoid division.
         self.solutions.len() / self.solution_len()
     }
 

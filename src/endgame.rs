@@ -46,7 +46,7 @@ impl EndgameSolver {
 
         let move_summaries = solutions.move_summaries();
 
-        if let Some(mov) = self.check_quick_win_root(&move_summaries) {
+        if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_summaries) {
             return (Ok(true), mov);
         }
 
@@ -116,7 +116,11 @@ impl EndgameSolver {
 
         let move_summaries = solutions.move_summaries();
 
-        let result = self.check_quick_win(solutions.num_moves_per_square(), &move_summaries) || {
+        let result = self.check_quick_win(
+            solutions.num_moves_per_square(),
+            solutions.len(),
+            &move_summaries,
+        ) || {
             let (solutions, square_compressions) = solutions.compress(&move_summaries);
 
             let mut moves =
@@ -160,7 +164,11 @@ impl EndgameSolver {
         Ok(!res)
     }
 
-    fn check_quick_win_root(&self, move_summaries: &[[MoveSummary; 9]]) -> Option<FullMove> {
+    fn check_quick_win_root(
+        &self,
+        num_solutions: usize,
+        move_summaries: &[[MoveSummary; 9]],
+    ) -> Option<FullMove> {
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
             for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
                 if move_summary.num_solutions == 1 {
@@ -176,6 +184,7 @@ impl EndgameSolver {
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
             for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
                 if move_summary.num_solutions >= 4
+                    && move_summary.num_solutions < num_solutions as u32
                     && self.transposition_table.find(move_summary.hash) == Some(false)
                 {
                     return Some(FullMove::Move(Move {
@@ -192,6 +201,7 @@ impl EndgameSolver {
     fn check_quick_win(
         &self,
         num_moves_per_square: &[u8],
+        num_solutions: usize,
         move_summaries: &[[MoveSummary; 9]],
     ) -> bool {
         assert_eq!(num_moves_per_square.len(), move_summaries.len());
@@ -211,6 +221,7 @@ impl EndgameSolver {
         {
             for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
                 if move_summary.num_solutions >= 4
+                    && move_summary.num_solutions < num_solutions as u32
                     && self.transposition_table.find(move_summary.hash) == Some(false)
                 {
                     return true;

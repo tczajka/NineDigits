@@ -74,7 +74,6 @@ impl EndgameSolver {
                 }
                 Err(e) => {
                     result = Err(e);
-                    log::write_line!(Info, "terminated: {e}");
                     break;
                 }
             }

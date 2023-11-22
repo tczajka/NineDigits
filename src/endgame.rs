@@ -63,13 +63,13 @@ impl EndgameSolver {
             );
             // TODO: Check smaller deadline here.
             match self.solve(&new_solutions, deadline) {
-                Ok(true) => {
+                Ok(false) => {
                     return (
                         Ok(true),
                         FullMove::Move(Self::uncompress_root_move(mov, &square_compressions)),
                     );
                 }
-                Ok(false) => {
+                Ok(true) => {
                     // Ignore: a losing move.
                 }
                 Err(e) => {
@@ -126,7 +126,7 @@ impl EndgameSolver {
                 mov.square_index.into(),
                 mov.digit,
             );
-            if self.solve(&new_solutions, deadline)? {
+            if !self.solve(&new_solutions, deadline)? {
                 return Ok(true);
             }
         }

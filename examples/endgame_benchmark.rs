@@ -100,8 +100,12 @@ fn run_benchmark(input_file_name: &Path, ttable_memory: usize) -> Result<(), Box
     }
 
     println!("generate: {statistics_generate}");
-    println!("win:  {statistics_win}");
-    println!("lose: {statistics_lose}");
+    if statistics_win.num_puzzles > 0 {
+        println!("win:  {statistics_win}");
+    }
+    if statistics_lose.num_puzzles > 0 {
+        println!("lose: {statistics_lose}");
+    }
 
     Ok(())
 }

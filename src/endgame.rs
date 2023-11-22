@@ -116,24 +116,22 @@ impl EndgameSolver {
 
         let move_summaries = solutions.move_summaries();
 
-        // TODO: Store result in hash table.
-        if self.check_quick_win(solutions.num_moves_per_square(), &move_summaries) {
-            return Ok(true);
-        }
+        let result = self.check_quick_win(solutions.num_moves_per_square(), &move_summaries) || {
+            let (solutions, square_compressions) = solutions.compress(&move_summaries);
 
-        let (solutions, square_compressions) = solutions.compress(&move_summaries);
+            let mut moves =
+                Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
+            moves.sort_by_key(|x| x.summary.num_solutions);
 
-        let mut moves =
-            Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
-        moves.sort_by_key(|x| x.summary.num_solutions);
-
-        let mut result = false;
-        for mov in moves.iter() {
-            if self.solve_move(&solutions, mov, deadline)? {
-                result = true;
-                break;
+            let mut result = false;
+            for mov in moves.iter() {
+                if self.solve_move(&solutions, mov, deadline)? {
+                    result = true;
+                    break;
+                }
             }
-        }
+            result
+        };
         self.transposition_table
             .insert(solutions.hash(), solutions.len() as u32, result);
         Ok(result)

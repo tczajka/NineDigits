@@ -14,6 +14,8 @@ pub struct SolutionTable {
     num_moves_per_square: Vec<u8>,
     /// Each solution is: ID_BYTES + square_moves.len().
     solutions: Vec<u8>,
+    /// Xor of solution IDs.
+    hash: u64,
 }
 
 impl SolutionTable {
@@ -23,6 +25,7 @@ impl SolutionTable {
         Self {
             num_moves_per_square: Vec::new(),
             solutions: Vec::new(),
+            hash: 0,
         }
     }
 
@@ -31,6 +34,7 @@ impl SolutionTable {
         Self {
             num_moves_per_square,
             solutions: Vec::with_capacity(max_solutions * solution_len),
+            hash: 0,
         }
     }
 
@@ -40,6 +44,10 @@ impl SolutionTable {
 
     pub fn len(&self) -> usize {
         self.solutions.len() / self.solution_len()
+    }
+
+    pub fn hash(&self) -> u64 {
+        self.hash
     }
 
     pub fn num_moves_per_square(&self) -> &[u8] {
@@ -58,10 +66,12 @@ impl SolutionTable {
         let digit_bytes =
             unsafe { slice::from_raw_parts(digits.as_ptr() as *const u8, digits.len()) };
         self.solutions.extend_from_slice(digit_bytes);
+        self.hash ^= id;
     }
 
     pub fn append_from(&mut self, other: SolutionRef) {
         assert_eq!(other.0.len(), self.solution_len());
+        self.hash ^= other.id();
         self.solutions.extend_from_slice(other.0);
     }
 

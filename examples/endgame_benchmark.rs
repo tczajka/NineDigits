@@ -15,11 +15,14 @@ use sudoku_game::{
 struct Args {
     #[arg(short, long)]
     input: PathBuf,
+
+    #[arg(short, long, default_value_t = 512)]
+    ttable_mb: usize,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    run_benchmark(&args.input)?;
+    run_benchmark(&args.input, args.ttable_mb << 20)?;
     Ok(())
 }
 
@@ -51,12 +54,12 @@ impl Display for EndgameStatistics {
     }
 }
 
-fn run_benchmark(input_file_name: &Path) -> Result<(), Box<dyn Error>> {
+fn run_benchmark(input_file_name: &Path, ttable_memory: usize) -> Result<(), Box<dyn Error>> {
     let input_file = File::open(input_file_name)?;
     let buf_reader = BufReader::new(input_file);
 
     let mut rng = RandomGenerator::with_nonce(0);
-    let mut endgame_solver = EndgameSolver::new();
+    let mut endgame_solver = EndgameSolver::new(ttable_memory);
 
     let mut statistics_generate = EndgameStatistics::new();
     let mut statistics_win = EndgameStatistics::new();

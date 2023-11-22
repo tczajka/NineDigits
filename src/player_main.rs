@@ -23,13 +23,14 @@ pub struct PlayerMain {
 impl PlayerMain {
     const SOLUTIONS_MIN: usize = 2;
     const SOLUTIONS_MAX: usize = 500_000;
+    const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
 
     pub fn new() -> Self {
         Self {
             board: Board::new(),
             all_solutions_generated: false,
             solutions: SolutionTable::empty(),
-            endgame_solver: EndgameSolver::new(),
+            endgame_solver: EndgameSolver::new(Self::TRANSPOSITION_TABLE_MEMORY),
             rng: RandomGenerator::with_time_nonce(),
         }
     }

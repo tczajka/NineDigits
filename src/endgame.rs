@@ -5,6 +5,7 @@ use crate::{
     log,
     small::Small,
     solution_table::{MoveSummary, SolutionTable, SquareCompression},
+    transposition_table::{self, TranspositionTable},
 };
 use std::time::Instant;
 
@@ -15,11 +16,15 @@ struct EndgameMove {
     summary: MoveSummary,
 }
 
-pub struct EndgameSolver;
+pub struct EndgameSolver {
+    transposition_table: TranspositionTable,
+}
 
 impl EndgameSolver {
-    pub fn new() -> Self {
-        Self
+    pub fn new(transposition_table_memory: usize) -> Self {
+        Self {
+            transposition_table: TranspositionTable::new(transposition_table_memory),
+        }
     }
 
     pub fn solve_best_effort(
@@ -27,6 +32,8 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         deadline: Instant,
     ) -> (Result<bool, ResourcesExceeded>, FullMove) {
+        self.transposition_table.new_era();
+
         if solutions.is_empty() {
             log::write_line!(Always, "Error: no solutions!");
             // No good option, let's just claim victory.
@@ -61,8 +68,10 @@ impl EndgameSolver {
                 mov.square_index.into(),
                 mov.digit,
             );
+            assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
+            assert_eq!(new_solutions.hash(), mov.summary.hash);
             // TODO: Check smaller deadline here.
-            match self.solve(&new_solutions, deadline) {
+            match self.solve_recursive(&new_solutions, deadline) {
                 Ok(false) => {
                     return (
                         Ok(true),
@@ -96,12 +105,25 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         deadline: Instant,
     ) -> Result<bool, ResourcesExceeded> {
+        self.transposition_table.new_era();
+        self.solve_recursive(solutions, deadline)
+    }
+
+    fn solve_recursive(
+        &mut self,
+        solutions: &SolutionTable,
+        deadline: Instant,
+    ) -> Result<bool, ResourcesExceeded> {
         // TODO: Check less often.
         if Instant::now() >= deadline {
             return Err(ResourcesExceeded::Time);
         }
         if solutions.len() <= 1 {
             return Ok(false);
+        }
+
+        if let Some(result) = self.transposition_table.find(solutions.hash()) {
+            return Ok(result);
         }
 
         let move_summaries = solutions.move_summaries();
@@ -116,6 +138,7 @@ impl EndgameSolver {
             Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
         moves.sort_by_key(|x| x.summary.num_solutions);
 
+        let mut result = false;
         for mov in moves.iter() {
             if mov.summary.num_solutions < 4 {
                 // Ignore: a losing move.
@@ -127,11 +150,16 @@ impl EndgameSolver {
                 mov.square_index.into(),
                 mov.digit,
             );
-            if !self.solve(&new_solutions, deadline)? {
-                return Ok(true);
+            assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
+            assert_eq!(new_solutions.hash(), mov.summary.hash);
+            if !self.solve_recursive(&new_solutions, deadline)? {
+                result = true;
+                break;
             }
         }
-        Ok(false)
+        self.transposition_table
+            .insert(solutions.hash(), solutions.len() as u32, result);
+        Ok(result)
     }
 
     fn check_quick_win_root(&self, move_summaries: &[[MoveSummary; 9]]) -> Option<FullMove> {

@@ -100,8 +100,10 @@ impl EndgameSolver {
         if Instant::now() >= deadline {
             return Err(ResourcesExceeded::Time);
         }
+        if solutions.len() <= 1 {
+            return Ok(false);
+        }
 
-        assert!(solutions.len() >= 2);
         let move_summaries = solutions.move_summaries();
 
         if self.check_quick_win(solutions.num_moves_per_square(), &move_summaries) {

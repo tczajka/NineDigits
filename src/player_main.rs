@@ -22,7 +22,6 @@ pub struct PlayerMain {
 
 impl PlayerMain {
     const SOLUTIONS_MIN: usize = 2;
-    // 300 MB
     const SOLUTIONS_MAX: usize = 500_000;
 
     pub fn new() -> Self {

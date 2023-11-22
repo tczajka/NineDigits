@@ -5,7 +5,7 @@ use crate::{
     log,
     small::Small,
     solution_table::{MoveSummary, SolutionTable, SquareCompression},
-    transposition_table::{self, TranspositionTable},
+    transposition_table::TranspositionTable,
 };
 use std::time::Instant;
 
@@ -94,9 +94,16 @@ impl EndgameSolver {
         deadline: Instant,
     ) -> Result<bool, ResourcesExceeded> {
         self.transposition_table.new_era();
+        if solutions.len() < 4 {
+            return Ok(solutions.len() > 1);
+        }
+        if let Some(result) = self.transposition_table.find(solutions.hash()) {
+            return Ok(result);
+        }
         self.solve_recursive(solutions, deadline)
     }
 
+    /// Already checked that there are at least 4 solutions and that this not in the transposition table.
     fn solve_recursive(
         &mut self,
         solutions: &SolutionTable,
@@ -105,13 +112,6 @@ impl EndgameSolver {
         // TODO: Check less often.
         if Instant::now() >= deadline {
             return Err(ResourcesExceeded::Time);
-        }
-        if solutions.len() < 4 {
-            return Ok(solutions.len() > 1);
-        }
-
-        if let Some(result) = self.transposition_table.find(solutions.hash()) {
-            return Ok(result);
         }
 
         let move_summaries = solutions.move_summaries();

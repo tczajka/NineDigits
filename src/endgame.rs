@@ -58,20 +58,8 @@ impl EndgameSolver {
 
         let mut result = Ok(false);
         for mov in moves.iter() {
-            if mov.summary.num_solutions < 4 {
-                // Ignore: a losing move.
-                // Immediate wins (1) are already handled by `check_quick_win_root`.
-                continue;
-            }
-            let new_solutions = solutions.filter(
-                mov.summary.num_solutions.try_into().unwrap(),
-                mov.square_index.into(),
-                mov.digit,
-            );
-            assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
-            assert_eq!(new_solutions.hash(), mov.summary.hash);
             // TODO: Check smaller deadline here.
-            match self.solve_recursive(&new_solutions, deadline) {
+            match self.solve_move(&solutions, mov, deadline) {
                 Ok(false) => {
                     return (
                         Ok(true),
@@ -140,19 +128,7 @@ impl EndgameSolver {
 
         let mut result = false;
         for mov in moves.iter() {
-            if mov.summary.num_solutions < 4 {
-                // Ignore: a losing move.
-                // Immediate wins (1) are already handled by `check_quick_win_root`.
-                continue;
-            }
-            let new_solutions = solutions.filter(
-                mov.summary.num_solutions.try_into().unwrap(),
-                mov.square_index.into(),
-                mov.digit,
-            );
-            assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
-            assert_eq!(new_solutions.hash(), mov.summary.hash);
-            if !self.solve_recursive(&new_solutions, deadline)? {
+            if !self.solve_move(&solutions, mov, deadline)? {
                 result = true;
                 break;
             }
@@ -160,6 +136,28 @@ impl EndgameSolver {
         self.transposition_table
             .insert(solutions.hash(), solutions.len() as u32, result);
         Ok(result)
+    }
+
+    fn solve_move(
+        &mut self,
+        solutions: &SolutionTable,
+        mov: &EndgameMove,
+        deadline: Instant,
+    ) -> Result<bool, ResourcesExceeded> {
+        if mov.summary.num_solutions < 4 {
+            return Ok(mov.summary.num_solutions == 1);
+        }
+        if let Some(result) = self.transposition_table.find(mov.summary.hash) {
+            return Ok(result);
+        }
+        let new_solutions = solutions.filter(
+            mov.summary.num_solutions.try_into().unwrap(),
+            mov.square_index.into(),
+            mov.digit,
+        );
+        assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
+        assert_eq!(new_solutions.hash(), mov.summary.hash);
+        self.solve_recursive(&new_solutions, deadline)
     }
 
     fn check_quick_win_root(&self, move_summaries: &[[MoveSummary; 9]]) -> Option<FullMove> {

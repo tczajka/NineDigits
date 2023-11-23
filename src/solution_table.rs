@@ -20,6 +20,7 @@ pub struct SolutionTable {
 
 impl SolutionTable {
     const ID_BYTES: usize = 8;
+    const CHECK_TIME_ITERS: u64 = 1024;
 
     pub fn empty() -> Self {
         Self {
@@ -86,8 +87,6 @@ impl SolutionTable {
         deadline: Instant,
         rng: &mut RandomGenerator,
     ) -> (Result<(), ResourcesExceeded>, Self) {
-        const CHECK_TIME_ITERS: u64 = 1024;
-
         let mut table = Self::with_capacity(vec![9; 81], max);
         let mut solver = FastSolver::new(board);
         let mut since_last_time_check: u64 = 0;
@@ -109,7 +108,7 @@ impl SolutionTable {
             }
 
             since_last_time_check += 1;
-            if since_last_time_check >= CHECK_TIME_ITERS && num_solutions >= min {
+            if since_last_time_check >= Self::CHECK_TIME_ITERS && num_solutions >= min {
                 since_last_time_check = 0;
                 if Instant::now() >= deadline {
                     return (Err(ResourcesExceeded::Time), table);

@@ -22,6 +22,8 @@ pub struct EndgameSolver {
 }
 
 impl EndgameSolver {
+    const CHECK_TIME_NODES: u64 = 1024;
+
     pub fn new(transposition_table_memory: usize) -> Self {
         Self {
             transposition_table: TranspositionTable::new(transposition_table_memory),
@@ -159,8 +161,7 @@ impl EndgameSolver {
     ) -> Result<bool, ResourcesExceeded> {
         self.num_nodes += 1;
 
-        // TODO: Check less often.
-        if Instant::now() >= deadline {
+        if self.num_nodes % Self::CHECK_TIME_NODES == 0 && Instant::now() >= deadline {
             return Err(ResourcesExceeded::Time);
         }
 

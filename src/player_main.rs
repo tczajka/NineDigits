@@ -28,7 +28,7 @@ impl PlayerMain {
     const SOLUTIONS_MAX: usize = 200_000;
     const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
     const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.1;
-    const ENDGAME_TIME_FRACTION: f64 = 0.1;
+    const ENDGAME_TIME_FRACTION: f64 = 0.2;
 
     pub fn new() -> Self {
         Self {
@@ -53,7 +53,7 @@ impl PlayerMain {
         Ok(())
     }
 
-    fn choose_move_without_all_solutions(&mut self) -> FullMove {
+    fn early_game(&mut self) -> FullMove {
         assert!(!self.all_solutions_generated);
         let num_solutions: u32 = self.solutions.len().try_into().unwrap();
         assert!(num_solutions >= 2);
@@ -78,7 +78,7 @@ impl PlayerMain {
             move_candidates[self.rng.uniform_usize(move_candidates.len())];
         log::write_line!(
             Info,
-            "midgame candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
+            "early game candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
             num_candidates = move_candidates.len()
         );
         FullMove::Move(chosen_move)
@@ -129,25 +129,13 @@ impl Player for PlayerMain {
         }
 
         let mov = if self.all_solutions_generated {
-            let (result, mov) = self.endgame_solver.solve_best_effort(
+            self.endgame_solver.solve_best_effort(
                 &self.solutions,
                 start_time,
                 time_left.mul_f64(Self::ENDGAME_TIME_FRACTION),
-            );
-            match result {
-                Ok(true) => {
-                    log::write_line!(Info, "endgame win");
-                }
-                Ok(false) => {
-                    log::write_line!(Info, "endgame lose");
-                }
-                Err(e) => {
-                    log::write_line!(Info, "endgame {e}");
-                }
-            }
-            mov
+            )
         } else {
-            self.choose_move_without_all_solutions()
+            self.early_game()
         };
         if let Some(mov) = mov.to_move() {
             self.make_move(mov).unwrap();

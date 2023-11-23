@@ -34,24 +34,25 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         start_time: Instant,
         time_left: Duration,
-    ) -> (Result<bool, ResourcesExceeded>, FullMove) {
+    ) -> FullMove {
         self.transposition_table.new_era();
         self.num_nodes = 0;
 
         if solutions.is_empty() {
             log::write_line!(Always, "Error: no solutions!");
             // No good option, let's just claim victory.
-            return (Ok(false), FullMove::ClaimUnique);
+            return FullMove::ClaimUnique;
         }
         if solutions.len() == 1 {
             log::write_line!(Info, "Lucky win: opponent didn't claim.");
-            return (Ok(true), FullMove::ClaimUnique);
+            return FullMove::ClaimUnique;
         }
 
         let move_summaries = solutions.move_summaries();
 
         if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_summaries) {
-            return (Ok(true), mov);
+            log::write_line!(Info, "quick win");
+            return mov;
         }
 
         let (solutions, square_compressions) = solutions.compress(&move_summaries);
@@ -97,6 +98,18 @@ impl EndgameSolver {
             }
         };
 
+        match result {
+            Ok(true) => {
+                log::write_line!(Info, "endgame win");
+            }
+            Ok(false) => {
+                log::write_line!(Info, "endgame lose");
+            }
+            Err(_) => {
+                log::write_line!(Info, "middle game");
+            }
+        }
+
         let processing_time = Instant::now().saturating_duration_since(start_time);
         log::write_line!(
             Info,
@@ -106,7 +119,7 @@ impl EndgameSolver {
             self.num_nodes as f64 / processing_time.as_secs_f64() / 1000.0
         );
 
-        (result, chosen_move)
+        chosen_move
     }
 
     pub fn solve(

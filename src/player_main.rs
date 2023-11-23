@@ -25,8 +25,10 @@ pub struct PlayerMain {
 
 impl PlayerMain {
     const SOLUTIONS_MIN: usize = 100;
-    const SOLUTIONS_MAX: usize = 500_000;
+    const SOLUTIONS_MAX: usize = 200_000;
     const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
+    const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.1;
+    const ENDGAME_TIME_FRACTION: f64 = 0.1;
 
     pub fn new() -> Self {
         Self {
@@ -96,7 +98,7 @@ impl Player for PlayerMain {
                 &self.board,
                 Self::SOLUTIONS_MIN,
                 Self::SOLUTIONS_MAX,
-                start_time + time_left / 10,
+                start_time + time_left.mul_f64(Self::SOLUTION_GENERATE_TIME_FRACTION),
                 &mut self.rng,
             );
             self.solutions = solutions;
@@ -127,9 +129,11 @@ impl Player for PlayerMain {
         }
 
         let mov = if self.all_solutions_generated {
-            let (result, mov) =
-                self.endgame_solver
-                    .solve_best_effort(&self.solutions, start_time, time_left / 10);
+            let (result, mov) = self.endgame_solver.solve_best_effort(
+                &self.solutions,
+                start_time,
+                time_left.mul_f64(Self::ENDGAME_TIME_FRACTION),
+            );
             match result {
                 Ok(true) => {
                     log::write_line!(Info, "endgame win");

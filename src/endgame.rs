@@ -7,7 +7,7 @@ use crate::{
     solution_table::{MoveSummary, SolutionTable, SquareCompression},
     transposition_table::TranspositionTable,
 };
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Copy, Clone, Debug)]
 struct EndgameMove {
@@ -18,21 +18,25 @@ struct EndgameMove {
 
 pub struct EndgameSolver {
     transposition_table: TranspositionTable,
+    num_nodes: u64,
 }
 
 impl EndgameSolver {
     pub fn new(transposition_table_memory: usize) -> Self {
         Self {
             transposition_table: TranspositionTable::new(transposition_table_memory),
+            num_nodes: 0,
         }
     }
 
     pub fn solve_best_effort(
         &mut self,
         solutions: &SolutionTable,
-        deadline: Instant,
+        start_time: Instant,
+        time_left: Duration,
     ) -> (Result<bool, ResourcesExceeded>, FullMove) {
         self.transposition_table.new_era();
+        self.num_nodes = 0;
 
         if solutions.is_empty() {
             log::write_line!(Always, "Error: no solutions!");
@@ -56,15 +60,19 @@ impl EndgameSolver {
             Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
         moves.sort_by_key(|x| x.summary.num_solutions);
 
+        let deadline = start_time + time_left;
         let mut result = Ok(false);
+        let mut winning_move = None;
         for mov in moves.iter() {
             // TODO: Check smaller deadline here.
             match self.solve_move(&solutions, mov, deadline) {
                 Ok(true) => {
-                    return (
-                        Ok(true),
-                        FullMove::Move(Self::uncompress_root_move(mov, &square_compressions)),
-                    );
+                    result = Ok(true);
+                    winning_move = Some(FullMove::Move(Self::uncompress_root_move(
+                        mov,
+                        &square_compressions,
+                    )));
+                    break;
                 }
                 Ok(false) => {
                     // Ignore: a losing move.
@@ -76,31 +84,58 @@ impl EndgameSolver {
             }
         }
 
-        // Did not find a winning move.
-        // Use the move with the most solutions.
-        // TODO: Defense, try last move.
-        (
-            result,
-            FullMove::Move(Self::uncompress_root_move(
-                moves.last().unwrap(),
-                &square_compressions,
-            )),
-        )
+        let chosen_move = match winning_move {
+            Some(mov) => mov,
+            None => {
+                // Did not find a winning move.
+                // Use the move with the most solutions.
+                // TODO: Defense, try last move.
+                FullMove::Move(Self::uncompress_root_move(
+                    moves.last().unwrap(),
+                    &square_compressions,
+                ))
+            }
+        };
+
+        let processing_time = Instant::now().saturating_duration_since(start_time);
+        log::write_line!(
+            Info,
+            "nodes: {} time: {:.3?} knps: {:.1}",
+            self.num_nodes,
+            processing_time,
+            self.num_nodes as f64 / processing_time.as_secs_f64() / 1000.0
+        );
+
+        (result, chosen_move)
     }
 
     pub fn solve(
         &mut self,
         solutions: &SolutionTable,
-        deadline: Instant,
+        start_time: Instant,
+        time_left: Duration,
     ) -> Result<bool, ResourcesExceeded> {
         self.transposition_table.new_era();
+        self.num_nodes = 0;
+
         if solutions.len() < 4 {
             return Ok(solutions.len() > 1);
         }
         if let Some(result) = self.transposition_table.find(solutions.hash()) {
             return Ok(result);
         }
-        self.solve_recursive(solutions, deadline)
+        let res = self.solve_recursive(solutions, start_time + time_left);
+
+        let processing_time = Instant::now().saturating_duration_since(start_time);
+        log::write_line!(
+            Info,
+            "nodes: {} time: {:.3?} knps: {:.1}",
+            self.num_nodes,
+            processing_time,
+            self.num_nodes as f64 / processing_time.as_secs_f64() / 1000.0
+        );
+
+        res
     }
 
     /// Already checked that there are at least 4 solutions and that this not in the transposition table.
@@ -109,6 +144,8 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         deadline: Instant,
     ) -> Result<bool, ResourcesExceeded> {
+        self.num_nodes += 1;
+
         // TODO: Check less often.
         if Instant::now() >= deadline {
             return Err(ResourcesExceeded::Time);

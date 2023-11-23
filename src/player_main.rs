@@ -105,20 +105,21 @@ impl Player for PlayerMain {
             let used_time = t.saturating_duration_since(start_time);
             time_left = time_left.saturating_sub(t - start_time);
             start_time = t;
+            let ksps = self.solutions.len() as f64 / used_time.as_secs_f64() / 1000.0;
 
             match res {
                 Ok(()) => {
                     self.all_solutions_generated = true;
                     log::write_line!(
                         Info,
-                        "All solutions generated count={count} time={used_time:.3?}",
+                        "All solutions generated count={count} time={used_time:.3?} ksps={ksps:.1} ",
                         count = self.solutions.len(),
                     );
                 }
                 Err(e) => {
                     log::write_line!(
                         Info,
-                        "solutions count={count} time={used_time:.3?} {e}",
+                        "solutions count={count} time={used_time:.3?} ksps={ksps:.1} {e}",
                         count = self.solutions.len(),
                     );
                 }
@@ -126,9 +127,9 @@ impl Player for PlayerMain {
         }
 
         let mov = if self.all_solutions_generated {
-            let (result, mov) = self
-                .endgame_solver
-                .solve_best_effort(&self.solutions, start_time + time_left / 10);
+            let (result, mov) =
+                self.endgame_solver
+                    .solve_best_effort(&self.solutions, start_time, time_left / 10);
             match result {
                 Ok(true) => {
                     log::write_line!(Info, "endgame win");

@@ -65,8 +65,10 @@ impl PlayerMain {
         }
         move_candidates.sort_by_key(|x| cmp::Reverse(x.1));
         let best_solutions = move_candidates[0].1;
-        // Pick a move with at least best_solutions / 2.
-        while move_candidates.last().unwrap().1 < best_solutions / 2 {
+        let min_solutions = ((best_solutions as f64 * settings::EARLY_GAME_MIN_SOLUTIONS_FRACTION)
+            as u32)
+            .clamp(2, best_solutions);
+        while move_candidates.last().unwrap().1 < min_solutions {
             move_candidates.pop();
         }
         let (chosen_move, num_solutions) =

@@ -11,7 +11,9 @@ pub fn run_codecup_interaction() -> io::Result<()> {
     let mut time_used = Duration::ZERO;
     let mut player = None;
 
+    #[allow(unused)] // submission::skip
     let time_limit = Duration::from_millis(29_800);
+    let time_limit = Duration::from_millis(10_000); // submission::skip
 
     loop {
         line.clear();

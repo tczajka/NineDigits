@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--output", required=True, help="output file")
 args = parser.parse_args()
 
-skip_line_re = re.compile(r".*// submission::skip\n")
+skip_line_re = re.compile(r"submission::skip")
 mod_line_re = re.compile(r"((pub )?)mod ([a-z0-9_]*);\n")
 
 
@@ -18,7 +18,7 @@ def process(file_name, output_file):
 
     with open(f"src/{file_name}") as f:
         for line in f:
-            if skip_line_re.fullmatch(line) is not None:
+            if skip_line_re.search(line) is not None:
                 continue
             m = mod_line_re.fullmatch(line)
             if m is not None:

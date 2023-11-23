@@ -8,6 +8,10 @@ edition = "2021"
 [profile.release]
 opt-level = 2
 
+[features]
+default = ["tomeks_computer"]
+tomeks_computer = []
+
 [dev-dependencies.clap]
 version = "4.4"
 features = ["derive"]

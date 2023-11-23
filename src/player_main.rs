@@ -11,6 +11,7 @@ use crate::{
     log,
     player::Player,
     random::RandomGenerator,
+    settings,
     small::Small,
     solution_table::SolutionTable,
 };
@@ -24,18 +25,12 @@ pub struct PlayerMain {
 }
 
 impl PlayerMain {
-    const SOLUTIONS_MIN: usize = 100;
-    const SOLUTIONS_MAX: usize = 200_000;
-    const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
-    const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.1;
-    const ENDGAME_TIME_FRACTION: f64 = 0.2;
-
     pub fn new() -> Self {
         Self {
             board: Board::new(),
             all_solutions_generated: false,
             solutions: SolutionTable::empty(),
-            endgame_solver: EndgameSolver::new(Self::TRANSPOSITION_TABLE_MEMORY),
+            endgame_solver: EndgameSolver::new(settings::TRANSPOSITION_TABLE_MEMORY),
             rng: RandomGenerator::with_time_nonce(),
         }
     }
@@ -96,9 +91,9 @@ impl Player for PlayerMain {
         if !self.all_solutions_generated {
             let (res, solutions) = SolutionTable::generate(
                 &self.board,
-                Self::SOLUTIONS_MIN,
-                Self::SOLUTIONS_MAX,
-                start_time + time_left.mul_f64(Self::SOLUTION_GENERATE_TIME_FRACTION),
+                settings::SOLUTIONS_MIN,
+                settings::SOLUTIONS_MAX,
+                start_time + time_left.mul_f64(settings::SOLUTION_GENERATE_TIME_FRACTION),
                 &mut self.rng,
             );
             self.solutions = solutions;
@@ -132,7 +127,7 @@ impl Player for PlayerMain {
             self.endgame_solver.solve_best_effort(
                 &self.solutions,
                 start_time,
-                time_left.mul_f64(Self::ENDGAME_TIME_FRACTION),
+                time_left.mul_f64(settings::ENDGAME_TIME_FRACTION),
             )
         } else {
             self.early_game()

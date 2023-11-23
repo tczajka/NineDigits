@@ -18,6 +18,7 @@ pub mod player;
 pub mod player_main;
 pub mod queue;
 pub mod random;
+pub mod settings;
 pub mod simd128;
 #[cfg(target_feature = "avx2")] // submission::skip
 pub mod simd256; // submission::skip

@@ -4,6 +4,7 @@ use crate::{
     error::ResourcesExceeded,
     fast_solver::FastSolver,
     random::RandomGenerator,
+    settings,
     small::Small,
     solver::{Solver, SolverStep},
 };
@@ -20,7 +21,6 @@ pub struct SolutionTable {
 
 impl SolutionTable {
     const ID_BYTES: usize = 8;
-    const CHECK_TIME_ITERS: u64 = 1024;
 
     pub fn empty() -> Self {
         Self {
@@ -108,7 +108,9 @@ impl SolutionTable {
             }
 
             since_last_time_check += 1;
-            if since_last_time_check >= Self::CHECK_TIME_ITERS && num_solutions >= min {
+            if since_last_time_check >= settings::SOLUTION_GENERATE_CHECK_TIME_ITERS
+                && num_solutions >= min
+            {
                 since_last_time_check = 0;
                 if Instant::now() >= deadline {
                     return (Err(ResourcesExceeded::Time), table);

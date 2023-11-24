@@ -105,8 +105,8 @@ impl EndgameSolver {
             Ok(false) => {
                 log::write_line!(Info, "endgame lose");
             }
-            Err(_) => {
-                log::write_line!(Info, "middle game");
+            Err(e) => {
+                log::write_line!(Info, "endgame {e}");
             }
         }
 

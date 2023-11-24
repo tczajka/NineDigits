@@ -48,7 +48,7 @@ impl PlayerMain {
         Ok(())
     }
 
-    fn early_game(&mut self) -> FullMove {
+    fn midgame(&mut self) -> FullMove {
         assert!(!self.all_solutions_generated);
         let num_solutions: u32 = self.solutions.len().try_into().unwrap();
         assert!(num_solutions >= 2);
@@ -75,7 +75,7 @@ impl PlayerMain {
             move_candidates[self.rng.uniform_usize(move_candidates.len())];
         log::write_line!(
             Info,
-            "early game candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
+            "midgame candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
             num_candidates = move_candidates.len()
         );
         FullMove::Move(chosen_move)
@@ -132,7 +132,7 @@ impl Player for PlayerMain {
                 time_left.mul_f64(settings::ENDGAME_TIME_FRACTION),
             )
         } else {
-            self.early_game()
+            self.midgame()
         };
         if let Some(mov) = mov.to_move() {
             self.make_move(mov).unwrap();

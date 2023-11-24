@@ -126,11 +126,8 @@ impl Player for PlayerMain {
         }
 
         let mov = if self.all_solutions_generated {
-            self.endgame_solver.solve_best_effort(
-                &self.solutions,
-                start_time,
-                time_left.mul_f64(settings::ENDGAME_TIME_FRACTION),
-            )
+            self.endgame_solver
+                .solve_best_effort(&self.solutions, start_time, time_left)
         } else {
             self.midgame()
         };

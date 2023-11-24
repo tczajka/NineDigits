@@ -7,7 +7,8 @@ pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(10_000);
 pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(29_700);
 
 pub const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.1;
-pub const ENDGAME_TIME_FRACTION: f64 = 0.2;
+pub const ENDGAME_OFFENSE_TIME_FRACTION: f64 = 0.1;
+pub const ENDGAME_DEFENSE_TIME_FRACTION: f64 = 0.1;
 
 // Solution generation.
 pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;

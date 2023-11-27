@@ -9,3 +9,10 @@ fn test_inverse() {
         assert_eq!(p.then(&p.inverse()), Permutation::identity());
     }
 }
+
+#[test]
+fn test_then_array() {
+    let p = &ALL_PERMUTATIONS_3[1]; // 0, 1, 2 -> 0, 2, 1
+    let array = [10, 20, 30];
+    assert_eq!(p.then_array(&array), [10, 30, 20]);
+}

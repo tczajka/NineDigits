@@ -31,7 +31,7 @@ impl<const L: usize> Small<L> {
     }
 
     /// A random `Small`.
-    pub fn new_random(rng: &mut RandomGenerator) -> Self {
+    pub fn random(rng: &mut RandomGenerator) -> Self {
         assert!(L <= 256);
         Self(rng.uniform_usize(L) as u8)
     }

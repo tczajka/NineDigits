@@ -30,4 +30,5 @@ pub mod small;
 pub mod small_set;
 pub mod solution_table;
 pub mod solver;
+pub mod symmetry;
 pub mod transposition_table;

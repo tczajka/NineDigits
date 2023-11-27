@@ -17,6 +17,12 @@ impl<const L: usize> Permutation<L> {
         Self { forward, backward }
     }
 
+    pub fn swap_forward(&mut self, i: Small<L>, j: Small<L>) {
+        self.forward.swap(i.into(), j.into());
+        self.backward
+            .swap(self.forward[i].into(), self.forward[j].into());
+    }
+
     pub fn inverse(&self) -> Self {
         Self {
             forward: self.backward,
@@ -40,6 +46,17 @@ impl<const L: usize> Permutation<L> {
             backward[i] = self.backward[other.backward[i]];
         }
         Self { forward, backward }
+    }
+
+    pub fn then_array<T>(&self, array: &[T; L]) -> [T; L]
+    where
+        T: Copy,
+    {
+        let mut result = [array[0]; L];
+        for i in Small::all() {
+            result[i] = array[self.forward[i]];
+        }
+        result
     }
 }
 

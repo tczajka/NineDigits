@@ -60,7 +60,7 @@ fn generate(max_solutions: u64, rng: &mut RandomGenerator) -> Board {
 fn random_move(board: &Board, rng: &mut RandomGenerator) -> Move {
     let squares: Vec<_> = board.empty_squares().into_iter().collect();
     let square = *rng.choose(&squares);
-    let digit = Digit::from(Small::new_random(rng));
+    let digit = Digit::from(Small::random(rng));
     Move { square, digit }
 }
 

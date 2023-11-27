@@ -71,8 +71,7 @@ impl PlayerMain {
         while move_candidates.last().unwrap().1 < min_solutions {
             move_candidates.pop();
         }
-        let (chosen_move, num_solutions) =
-            move_candidates[self.rng.uniform_usize(move_candidates.len())];
+        let (chosen_move, num_solutions) = *self.rng.choose(&move_candidates);
         log::write_line!(
             Info,
             "midgame candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",

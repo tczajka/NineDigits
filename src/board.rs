@@ -62,7 +62,7 @@ impl From<Small<81>> for Coordinates {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Board {
     squares: [OptionalDigit; 81],
     empty: SquareSet,

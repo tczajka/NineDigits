@@ -1,7 +1,7 @@
 use crate::{bits::Bits, small::Small};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
 #[repr(transparent)]
 pub struct SmallSet<const L: usize, T>(T);
 

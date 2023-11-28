@@ -1,4 +1,5 @@
 /target/
+/tools/target/
 /data/kaggle.in
 /data/kaggle.out
 /data/most_17.in

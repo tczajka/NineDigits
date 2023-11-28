@@ -12,6 +12,5 @@ opt-level = 2
 default = ["tomeks_computer"]
 tomeks_computer = []
 
-[dev-dependencies.clap]
-version = "4.4"
-features = ["derive"]
+[workspace]
+members = ["tools"]

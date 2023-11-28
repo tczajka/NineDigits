@@ -47,7 +47,7 @@ pub fn generate_moves(board: &mut Board, partial_solutions: &SolutionTable) -> V
     for square in board.empty_squares() {
         let mut possible = DigitSet::EMPTY;
         for digit in Digit::all() {
-            if counts[usize::from(square)][digit] == 0 {
+            if counts[square][digit] != 0 {
                 possible.insert(digit);
             }
         }

@@ -1,6 +1,6 @@
 use crate::{
     board::{box_major_coordinates, Board, Coordinates, Move},
-    digit::{Digit, OptionalDigit},
+    digit::Digit,
     permutation::{Permutation, ALL_PERMUTATIONS_2, ALL_PERMUTATIONS_3},
     random::RandomGenerator,
     small::Small,

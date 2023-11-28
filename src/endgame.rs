@@ -29,7 +29,7 @@ impl EndgameSolver {
         }
     }
 
-    pub fn solve_best_effort(
+    pub fn choose_move_best_effort(
         &mut self,
         solutions: &SolutionTable,
         mut start_time: Instant,

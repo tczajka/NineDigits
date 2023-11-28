@@ -49,6 +49,20 @@ pub struct FastSolver {
     remaining: Vec<SearchState>,
 }
 
+impl FastSolver {
+    pub fn remove_possibilities(&mut self, square: Small<81>, except: DigitSet) {
+        assert_eq!(self.remaining.len(), 1);
+        let coord = Coordinates::from(square);
+        for digit in except {
+            self.remaining[0].reject(Variable::Digit {
+                big: coord.big,
+                small: coord.small,
+                digit,
+            });
+        }
+    }
+}
+
 impl Solver for FastSolver {
     fn new(board: &Board) -> Self {
         let mut state = SearchState::initial();

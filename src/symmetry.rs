@@ -253,7 +253,7 @@ fn expand_possibilities<F, G, I, E>(
 fn box_counts(board: &Board) -> [[u8; 3]; 3] {
     let mut counts = [[0; 3]; 3];
     for coord in box_major_coordinates() {
-        if board.square(coord.into()) != OptionalDigit::NONE {
+        if !board.empty_squares().contains(coord.into()) {
             counts[coord.big[0]][coord.big[1]] += 1;
         }
     }
@@ -268,7 +268,7 @@ fn box_layout(board: &Board, big: [Small<3>; 2]) -> [[bool; 3]; 3] {
                 big,
                 small: [small0, small1],
             };
-            layout[small0][small1] = board.square(coord.into()) != OptionalDigit::NONE;
+            layout[small0][small1] = !board.empty_squares().contains(coord.into());
         }
     }
     layout

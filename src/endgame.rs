@@ -77,19 +77,17 @@ impl EndgameSolver {
             match self.solve_move(&solutions, mov, offense_deadline) {
                 Ok(true) => {
                     // Found a winning move.
-                    offense_index += 1;
                     log::write_line!(Info, "endgame win {offense_index} / {num_moves}");
                     self.log_stats(start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
                 }
-                Ok(false) => {
-                    offense_index += 1;
-                }
+                Ok(false) => {}
                 Err(e) => {
                     log::write_line!(Info, "endgame offense {offense_index} / {num_moves} {e}");
                     break;
                 }
             }
+            offense_index += 1;
         }
 
         {
@@ -103,14 +101,11 @@ impl EndgameSolver {
         let defense_start_time = start_time;
 
         // Moves in offence_index..defence_index haven't been checked.
-        let mut defense_index = 0;
-        while defense_index < num_moves - offense_index {
-            let mov = &moves[num_moves - defense_index - 1];
+        for (defense_index, mov) in moves[offense_index..].iter().rev().enumerate() {
             let defense_deadline =
                 start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_TIME_FRACTION);
             match self.solve_move(&solutions, mov, defense_deadline) {
                 Ok(true) => {
-                    defense_index += 1;
                     log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
@@ -120,7 +115,6 @@ impl EndgameSolver {
                     if defense_index == 0 {
                         log::write_line!(Info, "PANIC");
                     }
-                    defense_index += 1;
                     let t = Instant::now();
                     time_left = time_left.saturating_sub(t.saturating_duration_since(start_time));
                     start_time = t;

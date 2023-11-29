@@ -49,9 +49,7 @@ pub fn choose_move_best_effort(
     }
 
     for (defense_index, mov) in moves.iter().rev().enumerate() {
-        if usize::try_from(mov.num_solutions_lower_bound).unwrap()
-            <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX
-        {
+        if mov.num_solutions_lower_bound <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX {
             let defense_deadline =
                 start_time + time_left.mul_f64(settings::MIDGAME_DEFENSE_TIME_FRACTION);
             let mut new_board = *board;

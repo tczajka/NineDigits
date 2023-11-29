@@ -193,7 +193,7 @@ impl EndgameSolver {
             result
         };
         self.transposition_table
-            .insert(solutions.hash(), solutions.len() as u32, result);
+            .insert(solutions.hash(), solutions.len(), result);
         Ok(result)
     }
 
@@ -210,11 +210,11 @@ impl EndgameSolver {
             return Ok(!result);
         }
         let new_solutions = solutions.filter(
-            mov.summary.num_solutions.try_into().unwrap(),
+            mov.summary.num_solutions,
             mov.square_index.into(),
             mov.digit,
         );
-        assert_eq!(new_solutions.len(), mov.summary.num_solutions as usize);
+        assert_eq!(new_solutions.len(), mov.summary.num_solutions);
         assert_eq!(new_solutions.hash(), mov.summary.hash);
         let res = self.solve_recursive(&new_solutions, deadline)?;
         Ok(!res)
@@ -222,7 +222,7 @@ impl EndgameSolver {
 
     fn check_quick_win_root(
         &self,
-        num_solutions: usize,
+        num_solutions: u32,
         move_summaries: &[[MoveSummary; 9]],
     ) -> Option<FullMove> {
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
@@ -240,7 +240,7 @@ impl EndgameSolver {
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
             for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
                 if move_summary.num_solutions >= 4
-                    && move_summary.num_solutions < num_solutions as u32
+                    && move_summary.num_solutions < num_solutions
                     && self.transposition_table.find(move_summary.hash) == Some(false)
                 {
                     return Some(FullMove::Move(Move {
@@ -257,7 +257,7 @@ impl EndgameSolver {
     fn check_quick_win(
         &self,
         num_moves_per_square: &[u8],
-        num_solutions: usize,
+        num_solutions: u32,
         move_summaries: &[[MoveSummary; 9]],
     ) -> bool {
         assert_eq!(num_moves_per_square.len(), move_summaries.len());
@@ -277,7 +277,7 @@ impl EndgameSolver {
         {
             for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
                 if move_summary.num_solutions >= 4
-                    && move_summary.num_solutions < num_solutions as u32
+                    && move_summary.num_solutions < num_solutions
                     && self.transposition_table.find(move_summary.hash) == Some(false)
                 {
                     return true;

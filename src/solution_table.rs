@@ -15,6 +15,8 @@ pub struct SolutionTable {
     num_moves_per_square: Vec<u8>,
     /// Each solution is: ID_BYTES + square_moves.len().
     solutions: Vec<u8>,
+    // Number of solutions. len * num_moves_per_square.len() == solutions.len().
+    len: u32,
     /// Xor of solution IDs.
     hash: u64,
 }
@@ -26,26 +28,27 @@ impl SolutionTable {
         Self {
             num_moves_per_square: Vec::new(),
             solutions: Vec::new(),
+            len: 0,
             hash: 0,
         }
     }
 
-    pub fn with_capacity(num_moves_per_square: Vec<u8>, max_solutions: usize) -> Self {
+    pub fn with_capacity(num_moves_per_square: Vec<u8>, max_solutions: u32) -> Self {
         let solution_len = Self::ID_BYTES + num_moves_per_square.len();
         Self {
             num_moves_per_square,
-            solutions: Vec::with_capacity(max_solutions * solution_len),
+            solutions: Vec::with_capacity(usize::try_from(max_solutions).unwrap() * solution_len),
+            len: 0,
             hash: 0,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.solutions.is_empty()
+        self.len == 0
     }
 
-    pub fn len(&self) -> usize {
-        // TODO: Replace with self.num_solutions to avoid division.
-        self.solutions.len() / self.solution_len()
+    pub fn len(&self) -> u32 {
+        self.len
     }
 
     pub fn hash(&self) -> u64 {
@@ -57,8 +60,8 @@ impl SolutionTable {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = SolutionRef<'_>> {
-        let len = self.solution_len();
-        self.solutions.chunks_exact(len).map(SolutionRef)
+        let slen = self.solution_len();
+        self.solutions.chunks_exact(slen).map(SolutionRef)
     }
 
     pub fn append(&mut self, id: u64, digits: &[Digit]) {
@@ -68,13 +71,15 @@ impl SolutionTable {
         let digit_bytes =
             unsafe { slice::from_raw_parts(digits.as_ptr() as *const u8, digits.len()) };
         self.solutions.extend_from_slice(digit_bytes);
+        self.len += 1;
         self.hash ^= id;
     }
 
     pub fn append_from(&mut self, other: SolutionRef) {
         assert_eq!(other.0.len(), self.solution_len());
-        self.hash ^= other.id();
         self.solutions.extend_from_slice(other.0);
+        self.len += 1;
+        self.hash ^= other.id();
     }
 
     // Generate solutions.
@@ -82,8 +87,8 @@ impl SolutionTable {
     // `ResourcesExceeded::Time` if deadline exceeded and at least `min` solutions.
     pub fn generate(
         board: &Board,
-        min: usize,
-        max: usize,
+        min: u32,
+        max: u32,
         deadline: Instant,
         rng: &mut RandomGenerator,
     ) -> (Result<(), ResourcesExceeded>, Self) {
@@ -119,7 +124,7 @@ impl SolutionTable {
         }
     }
 
-    pub fn filter(&self, capacity: usize, square: usize, digit: Digit) -> Self {
+    pub fn filter(&self, capacity: u32, square: usize, digit: Digit) -> Self {
         let mut table = Self::with_capacity(self.num_moves_per_square.clone(), capacity);
         for solution in self.iter() {
             if solution.digits()[square] == digit {

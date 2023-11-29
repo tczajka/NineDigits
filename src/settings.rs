@@ -15,8 +15,8 @@ pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;
 pub const SOLUTIONS_MIN: usize = 100;
 pub const SOLUTIONS_MAX: usize = 200_000;
 
-// Early game.
-pub const EARLY_GAME_MIN_SOLUTIONS_FRACTION: f64 = 0.9;
+// Midgame.
+pub const MIDGAME_RANDOMIZE_FRACTION: Option<f64> = Some(0.9);
 
 // Endgame.
 pub const ENDGAME_CHECK_TIME_NODES: u64 = 1024;

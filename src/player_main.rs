@@ -91,7 +91,14 @@ impl Player for PlayerMain {
             self.endgame_solver
                 .choose_move_best_effort(&self.solutions, start_time, time_left)
         } else {
-            midgame::choose_move_best_effort(&mut self.board, &self.solutions, &mut self.rng)
+            midgame::choose_move_best_effort(
+                &mut self.board,
+                &self.solutions,
+                start_time,
+                time_left,
+                &mut self.endgame_solver,
+                &mut self.rng,
+            )
         };
         if let Some(mov) = mov.to_move() {
             self.make_move(mov).unwrap();

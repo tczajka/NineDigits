@@ -2,6 +2,7 @@ use crate::{
     board::{Board, FilledBoard, FullMove, Move},
     digit::Digit,
     digit_set::DigitSet,
+    endgame::EndgameSolver,
     fast_solver::FastSolver,
     log,
     random::RandomGenerator,
@@ -10,31 +11,44 @@ use crate::{
     solution_table::SolutionTable,
     solver::{Solver, SolverStep},
 };
-use std::cmp;
+use std::time::{Duration, Instant};
 
 pub fn choose_move_best_effort(
     board: &mut Board,
     partial_solutions: &SolutionTable,
+    start_time: Instant,
+    time_left: Duration,
+    endgame_solver: &mut EndgameSolver,
     rng: &mut RandomGenerator,
 ) -> FullMove {
+    assert!(partial_solutions.len() >= settings::SOLUTIONS_MIN);
     let mut moves = generate_moves(board, partial_solutions);
+    let num_moves = moves.len();
     assert!(!moves.is_empty());
-    moves.sort_by_key(|x| cmp::Reverse(x.num_solutions_lower_bound));
-    let best_solutions = moves[0].num_solutions_lower_bound;
-    let min_solutions = ((best_solutions as f64 * settings::EARLY_GAME_MIN_SOLUTIONS_FRACTION)
-        as u32)
-        .clamp(2, best_solutions);
-    while moves.last().unwrap().num_solutions_lower_bound < min_solutions {
-        moves.pop();
+    moves.sort_by_key(|x| x.num_solutions_lower_bound);
+
+    if let Some(fraction) = settings::MIDGAME_RANDOMIZE_FRACTION {
+        let best_solutions = moves.last().unwrap().num_solutions_lower_bound;
+        let min_solutions = ((best_solutions as f64 * fraction) as u32).clamp(2, best_solutions);
+        let mut shuffle_from = num_moves - 1;
+        while shuffle_from != 0
+            && moves[shuffle_from - 1].num_solutions_lower_bound >= min_solutions
+        {
+            shuffle_from -= 1;
+        }
+        log::write_line!(Info, "shuffling {n} moves", n = num_moves - shuffle_from);
+        rng.shuffle(&mut moves[shuffle_from..]);
     }
-    let chosen_move = *rng.choose(&moves);
+
+    // TODO: Defense.
+
+    let mov = moves.last().unwrap();
     log::write_line!(
         Info,
-        "midgame candidates: {num_candidates} num_solutions: {num_solutions} best_solutions: {best_solutions}",
-        num_solutions = chosen_move.num_solutions_lower_bound,
-        num_candidates = moves.len()
+        "midgame num_solutions >= {num_solutions}",
+        num_solutions = mov.num_solutions_lower_bound,
     );
-    FullMove::Move(chosen_move.mov)
+    FullMove::Move(mov.mov)
 }
 
 /// Returns (normalized board, all possible moves)

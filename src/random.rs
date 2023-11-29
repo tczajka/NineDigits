@@ -86,6 +86,14 @@ impl RandomGenerator {
         &seq[index]
     }
 
+    /// Shuffle.
+    pub fn shuffle<T>(&mut self, seq: &mut [T]) {
+        for i in 0..seq.len() {
+            let j = self.uniform_usize(i + 1);
+            seq.swap(i, j);
+        }
+    }
+
     fn random_bits(&mut self, num_bits: u32) -> u64 {
         assert!(num_bits < 64);
         if num_bits <= self.num_bits {

@@ -60,6 +60,7 @@ impl EndgameSolver {
         let mut moves =
             Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
         moves.sort_by_key(|x| x.summary.num_solutions);
+        let num_moves = moves.len();
 
         let offense_deadline =
             start_time + time_left.mul_f64(settings::ENDGAME_OFFENSE_TIME_FRACTION);
@@ -67,8 +68,8 @@ impl EndgameSolver {
         let mut offense_index = 0;
         loop {
             let mov = &moves[offense_index];
-            if offense_index == moves.len() - 1 {
-                log::write_line!(Info, "endgame probably lost");
+            if offense_index == num_moves - 1 {
+                log::write_line!(Info, "endgame probably lost {offense_index} / {num_moves}");
                 self.log_stats(start_time, Instant::now());
                 return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
             }
@@ -76,11 +77,8 @@ impl EndgameSolver {
             match self.solve_move(&solutions, mov, offense_deadline) {
                 Ok(true) => {
                     // Found a winning move.
-                    log::write_line!(
-                        Info,
-                        "endgame win #{offense_index} / {num_moves}",
-                        num_moves = moves.len()
-                    );
+                    offense_index += 1;
+                    log::write_line!(Info, "endgame win {offense_index} / {num_moves}");
                     self.log_stats(start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
                 }
@@ -88,11 +86,7 @@ impl EndgameSolver {
                     offense_index += 1;
                 }
                 Err(e) => {
-                    log::write_line!(
-                        Info,
-                        "endgame offence: {offense_index} / {num_moves} {e}",
-                        num_moves = moves.len()
-                    );
+                    log::write_line!(Info, "endgame offense {offense_index} / {num_moves} {e}");
                     break;
                 }
             }
@@ -109,38 +103,32 @@ impl EndgameSolver {
         let defense_start_time = start_time;
 
         // Moves in offence_index..defence_index haven't been checked.
-        let mut defense_index = moves.len();
-        while defense_index > offense_index {
-            let mov = &moves[defense_index - 1];
+        let mut defense_index = 0;
+        while defense_index < num_moves - offense_index {
+            let mov = &moves[num_moves - defense_index - 1];
             let defence_deadline =
                 start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_TIME_FRACTION);
             match self.solve_move(&solutions, mov, defence_deadline) {
                 Ok(true) => {
-                    log::write_line!(
-                        Info,
-                        "endgame defense win! #{number} / {num_moves}",
-                        number = moves.len() - defense_index,
-                        num_moves = moves.len()
-                    );
+                    defense_index += 1;
+                    log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
                 }
                 Ok(false) => {
                     // Panic. Reset time for next defensive move.
-                    if defense_index == moves.len() {
+                    if defense_index == 0 {
                         log::write_line!(Info, "PANIC");
                     }
+                    defense_index += 1;
                     let t = Instant::now();
                     time_left = time_left.saturating_sub(t.saturating_duration_since(start_time));
                     start_time = t;
-                    defense_index -= 1;
                 }
                 Err(e) => {
                     log::write_line!(
                         Info,
-                        "endgame defense safe: #{number} / {num_moves} {e}",
-                        number = moves.len() - defense_index,
-                        num_moves = moves.len()
+                        "endgame defense safe: {defense_index} / {num_moves} {e}",
                     );
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
@@ -148,7 +136,7 @@ impl EndgameSolver {
             }
         }
 
-        log::write_line!(Info, "endgame lost, play largest move");
+        log::write_line!(Info, "endgame lost");
         self.log_stats(defense_start_time, Instant::now());
         FullMove::Move(Self::uncompress_root_move(
             moves.last().unwrap(),
@@ -159,8 +147,7 @@ impl EndgameSolver {
     pub fn solve(
         &mut self,
         solutions: &SolutionTable,
-        start_time: Instant,
-        time_left: Duration,
+        deadline: Instant,
     ) -> Result<bool, ResourcesExceeded> {
         self.transposition_table.new_era();
         self.num_nodes = 0;
@@ -171,7 +158,8 @@ impl EndgameSolver {
         if let Some(result) = self.transposition_table.find(solutions.hash()) {
             return Ok(result);
         }
-        let res = self.solve_recursive(solutions, start_time + time_left);
+        let start_time = Instant::now();
+        let res = self.solve_recursive(solutions, deadline);
         self.log_stats(start_time, Instant::now());
         res
     }

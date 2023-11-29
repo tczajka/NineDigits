@@ -16,8 +16,8 @@ use std::time::{Duration, Instant};
 pub fn choose_move_best_effort(
     board: &mut Board,
     partial_solutions: &SolutionTable,
-    start_time: Instant,
-    time_left: Duration,
+    mut start_time: Instant,
+    mut time_left: Duration,
     endgame_solver: &mut EndgameSolver,
     rng: &mut RandomGenerator,
 ) -> FullMove {
@@ -40,15 +40,66 @@ pub fn choose_move_best_effort(
         rng.shuffle(&mut moves[shuffle_from..]);
     }
 
-    // TODO: Defense.
+    {
+        let t = Instant::now();
+        let used_time = t.saturating_duration_since(start_time);
+        time_left = time_left.saturating_sub(used_time);
+        start_time = t;
+        log::write_line!(Info, "midgame movegen time {used_time:.3?}",);
+    }
 
-    let mov = moves.last().unwrap();
-    log::write_line!(
-        Info,
-        "midgame num_solutions >= {num_solutions}",
-        num_solutions = mov.num_solutions_lower_bound,
-    );
-    FullMove::Move(mov.mov)
+    for (defense_index, mov) in moves.iter().rev().enumerate() {
+        if usize::try_from(mov.num_solutions_lower_bound).unwrap()
+            <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX
+        {
+            let defense_deadline =
+                start_time + time_left.mul_f64(settings::MIDGAME_DEFENSE_TIME_FRACTION);
+            let mut new_board = *board;
+            new_board.make_move(mov.mov).unwrap();
+            let (solgen_result, solutions) = SolutionTable::generate(
+                &new_board,
+                0,
+                settings::MIDGAME_DEFENSE_SOLUTIONS_MAX,
+                defense_deadline,
+                rng,
+            );
+            if let Err(e) = solgen_result {
+                log::write_line!(
+                    Info,
+                    "midgame defense safe {defense_index} / {num_moves} solution generate {e}"
+                );
+                return FullMove::Move(mov.mov);
+            }
+            match endgame_solver.solve(&solutions, defense_deadline) {
+                Ok(false) => {
+                    log::write_line!(Info, "midgame defense win! {defense_index} / {num_moves}");
+                    return FullMove::Move(mov.mov);
+                }
+                Ok(true) => {
+                    if defense_index == 0 {
+                        log::write_line!(Info, "MIDGAME PANIC");
+                    }
+                    let t = Instant::now();
+                    time_left = time_left.saturating_sub(t.saturating_duration_since(start_time));
+                    start_time = t;
+                }
+                Err(_) => {
+                    log::write_line!(Info, "midgame defense safe {defense_index} / {num_moves} num_solutions = {num_solutions}",
+                        num_solutions = solutions.len());
+                    return FullMove::Move(mov.mov);
+                }
+            }
+        } else {
+            log::write_line!(
+                Info,
+                "midgame num_solutions >= {num_solutions}",
+                num_solutions = mov.num_solutions_lower_bound,
+            );
+            return FullMove::Move(mov.mov);
+        }
+    }
+    log::write_line!(Info, "midgame lost");
+    FullMove::Move(moves.last().unwrap().mov)
 }
 
 /// Returns (normalized board, all possible moves)

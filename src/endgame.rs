@@ -106,9 +106,9 @@ impl EndgameSolver {
         let mut defense_index = 0;
         while defense_index < num_moves - offense_index {
             let mov = &moves[num_moves - defense_index - 1];
-            let defence_deadline =
+            let defense_deadline =
                 start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_TIME_FRACTION);
-            match self.solve_move(&solutions, mov, defence_deadline) {
+            match self.solve_move(&solutions, mov, defense_deadline) {
                 Ok(true) => {
                     defense_index += 1;
                     log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);

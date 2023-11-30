@@ -158,6 +158,44 @@ impl EndgameSolver {
         res
     }
 
+    pub fn solve_with_move(
+        &mut self,
+        solutions: &SolutionTable,
+        deadline: Instant,
+    ) -> Result<(bool, Option<FullMove>), ResourcesExceeded> {
+        if solutions.is_empty() {
+            return Ok((false, None));
+        }
+        if solutions.len() == 1 {
+            return Ok((true, Some(FullMove::ClaimUnique)));
+        }
+
+        let move_summaries = solutions.move_summaries();
+
+        if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_summaries) {
+            return Ok((true, Some(mov)));
+        }
+
+        let (solutions, square_compressions) = solutions.compress(&move_summaries);
+
+        let mut moves =
+            Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
+        moves.sort_by_key(|x| x.summary.num_solutions);
+
+        for mov in &moves {
+            if self.solve_move(&solutions, mov, deadline)? {
+                return Ok((
+                    true,
+                    Some(FullMove::Move(Self::uncompress_root_move(
+                        mov,
+                        &square_compressions,
+                    ))),
+                ));
+            }
+        }
+        Ok((false, None))
+    }
+
     /// Already checked that there are at least 4 solutions and that this not in the transposition table.
     fn solve_recursive(
         &mut self,

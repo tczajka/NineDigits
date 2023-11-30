@@ -114,7 +114,7 @@ fn run_matches(match_info: &Mutex<MatchInfo>) {
                 match_info.max_time[i] = match_info.max_time[i].max(times[i ^ side]);
             }
             eprintln!(
-                "Match {game_name}: {}{} {} - {}",
+                "Game {game_name}: {}{} {} - {}",
                 ["A", "B"][real_winner],
                 if failure { " failure" } else { "" },
                 match_info.wins[0],

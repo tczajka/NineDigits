@@ -143,10 +143,8 @@ impl Display for Number {
 }
 
 fn select_leaf(book: &OpeningBook) -> Option<usize> {
-    if book.nodes[ROOT].virtual_proof_number == Number::Infinity
-        || book.nodes[ROOT].virtual_disproof_number == Number::Infinity
-        || book.nodes[ROOT].outcome != Outcome::Unknown
-    {
+    assert_ne!(book.nodes[ROOT].virtual_proof_number, Number::Finite(0));
+    if book.nodes[ROOT].virtual_proof_number == Number::Infinity {
         return None;
     }
     let mut node_id = ROOT;
@@ -224,23 +222,31 @@ fn update_ancestors(book: &mut OpeningBook, node_id: usize) {
     }
 }
 
-fn expand(book: &mut OpeningBook, node_id: usize) {
-    assert!(book.nodes[node_id].forward_edges.is_empty());
-    assert!(book.nodes[node_id].outcome == Outcome::Unknown);
-
-    let mut board = book.nodes[node_id].board;
+fn gen_moves(board: &Board) -> Vec<(Move, Board)> {
+    let mut board = *board;
     let moves = midgame::generate_moves(&mut board, &SolutionTable::empty());
+    let mut result = Vec::new();
     for mov in moves {
         let mut board2 = board;
         board2.make_move(mov.mov).unwrap();
         // Normalize board2.
         let _ = midgame::generate_moves(&mut board2, &SolutionTable::empty());
         (board2, _) = symmetry::normalize_board(&board2);
-        let node_id2 = book.add_node(&board2);
+        result.push((mov.mov, board2))
+    }
+    result
+}
+
+fn expand(book: &mut OpeningBook, node_id: usize, moves: &[(Move, Board)]) {
+    assert!(book.nodes[node_id].forward_edges.is_empty());
+    assert!(book.nodes[node_id].outcome == Outcome::Unknown);
+
+    for (mov, board2) in moves {
+        let node_id2 = book.add_node(board2);
         let edge = Edge {
             from: node_id,
             to: node_id2,
-            mov: mov.mov,
+            mov: *mov,
         };
         book.nodes[node_id].forward_edges.push(edge);
         book.nodes[node_id2].backward_edges.push(edge);
@@ -254,7 +260,6 @@ fn solve(
     endgame_solver: &mut EndgameSolver,
     rng: &mut RandomGenerator,
 ) -> Outcome {
-    eprintln!("Solving: {board}");
     let deadline = Instant::now() + time_limit;
     let (result, solutions) = SolutionTable::generate(board, 0, max_solutions, deadline, rng);
     if result.is_err() {
@@ -286,11 +291,12 @@ fn main() {
 
     let book = Arc::new(Mutex::new(OpeningBook::new()));
     let join_handles: Vec<_> = (0..args.threads)
-        .map(|_| {
+        .map(|thread_id| {
             let book = book.clone();
             let update_condvar = update_condvar.clone();
             thread::spawn(move || {
                 pn_search_thread(
+                    thread_id,
                     &book,
                     &update_condvar,
                     deadline,
@@ -328,6 +334,7 @@ fn main() {
 }
 
 fn pn_search_thread(
+    thread_id: u32,
     book: &Mutex<OpeningBook>,
     update_condvar: &Condvar,
     deadline: Option<Instant>,
@@ -361,6 +368,7 @@ fn pn_search_thread(
             update_ancestors(&mut book, node_id);
             (node_id, book.nodes[node_id].board)
         };
+        eprintln!("Thread {thread_id} solving: {board}");
         let outcome = solve(
             &board,
             max_solutions,
@@ -368,6 +376,11 @@ fn pn_search_thread(
             &mut endgame_solver,
             &mut rng,
         );
+        let moves = if outcome == Outcome::Unknown {
+            gen_moves(&board)
+        } else {
+            Vec::new()
+        };
         {
             let mut book = book.lock().unwrap();
             book.nodes[node_id].outcome = outcome;
@@ -387,7 +400,7 @@ fn pn_search_thread(
                     book.num_solved_nodes += 1;
                 }
                 Outcome::Unknown => {
-                    expand(&mut book, node_id);
+                    expand(&mut book, node_id, &moves);
                     update_node(&mut book, node_id);
                 }
             }

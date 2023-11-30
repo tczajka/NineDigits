@@ -140,8 +140,8 @@ impl SolutionTable {
         for solution in self.iter() {
             let id = solution.id();
             let digits = solution.digits();
-            for (square, &digit) in digits.iter().enumerate() {
-                let summary = &mut summaries[square][digit];
+            for (&digit, summaries_sq) in digits.iter().zip(summaries.iter_mut()) {
+                let summary = &mut summaries_sq[digit];
                 summary.num_solutions += 1;
                 summary.hash ^= id;
             }

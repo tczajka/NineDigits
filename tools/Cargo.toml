@@ -11,3 +11,6 @@ path = ".."
 [dependencies.clap]
 version = "4.4"
 features = ["derive"]
+
+[dependencies.subprocess]
+version = "0.2.9"

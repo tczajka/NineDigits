@@ -42,6 +42,95 @@ impl PlayerMain {
         }
         Ok(())
     }
+
+    fn midgame_choose_move_best_effort(
+        &mut self,
+        mut start_time: Instant,
+        mut time_left: Duration,
+    ) -> FullMove {
+        assert!(self.solutions.len() >= settings::SOLUTIONS_MIN);
+        let mut moves = midgame::generate_moves(&mut self.board, &self.solutions);
+        let num_moves = moves.len();
+        assert!(!moves.is_empty());
+        moves.sort_by_key(|x| x.num_solutions_lower_bound);
+
+        if let Some(fraction) = settings::MIDGAME_RANDOMIZE_FRACTION {
+            let best_solutions = moves.last().unwrap().num_solutions_lower_bound;
+            let min_solutions =
+                ((best_solutions as f64 * fraction) as u32).clamp(2, best_solutions);
+            let mut shuffle_from = num_moves - 1;
+            while shuffle_from != 0
+                && moves[shuffle_from - 1].num_solutions_lower_bound >= min_solutions
+            {
+                shuffle_from -= 1;
+            }
+            log::write_line!(Info, "shuffling {n} moves", n = num_moves - shuffle_from);
+            self.rng.shuffle(&mut moves[shuffle_from..]);
+        }
+
+        {
+            let t = Instant::now();
+            let used_time = t.saturating_duration_since(start_time);
+            time_left = time_left.saturating_sub(used_time);
+            start_time = t;
+            log::write_line!(Info, "midgame movegen time {used_time:.3?}",);
+        }
+
+        for (defense_index, mov) in moves.iter().rev().enumerate() {
+            if mov.num_solutions_lower_bound <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX {
+                let defense_deadline =
+                    start_time + time_left.mul_f64(settings::MIDGAME_DEFENSE_TIME_FRACTION);
+                let mut new_board = self.board;
+                new_board.make_move(mov.mov).unwrap();
+                let (solgen_result, solutions) = SolutionTable::generate(
+                    &new_board,
+                    0,
+                    settings::MIDGAME_DEFENSE_SOLUTIONS_MAX,
+                    defense_deadline,
+                    &mut self.rng,
+                );
+                if let Err(e) = solgen_result {
+                    log::write_line!(
+                        Info,
+                        "midgame defense safe {defense_index} / {num_moves} solution generate {e}"
+                    );
+                    return FullMove::Move(mov.mov);
+                }
+                match self.endgame_solver.solve(&solutions, defense_deadline) {
+                    Ok(false) => {
+                        log::write_line!(
+                            Info,
+                            "midgame defense win! {defense_index} / {num_moves}"
+                        );
+                        return FullMove::Move(mov.mov);
+                    }
+                    Ok(true) => {
+                        if defense_index == 0 {
+                            log::write_line!(Info, "MIDGAME PANIC");
+                        }
+                        let t = Instant::now();
+                        time_left =
+                            time_left.saturating_sub(t.saturating_duration_since(start_time));
+                        start_time = t;
+                    }
+                    Err(_) => {
+                        log::write_line!(Info, "midgame defense safe {defense_index} / {num_moves} num_solutions = {num_solutions}",
+                            num_solutions = solutions.len());
+                        return FullMove::Move(mov.mov);
+                    }
+                }
+            } else {
+                log::write_line!(
+                    Info,
+                    "midgame num_solutions >= {num_solutions}",
+                    num_solutions = mov.num_solutions_lower_bound,
+                );
+                return FullMove::Move(mov.mov);
+            }
+        }
+        log::write_line!(Info, "midgame lost");
+        FullMove::Move(moves.last().unwrap().mov)
+    }
 }
 
 impl Player for PlayerMain {
@@ -91,14 +180,7 @@ impl Player for PlayerMain {
             self.endgame_solver
                 .choose_move_best_effort(&self.solutions, start_time, time_left)
         } else {
-            midgame::choose_move_best_effort(
-                &mut self.board,
-                &self.solutions,
-                start_time,
-                time_left,
-                &mut self.endgame_solver,
-                &mut self.rng,
-            )
+            self.midgame_choose_move_best_effort(start_time, time_left)
         };
         if let Some(mov) = mov.to_move() {
             self.make_move(mov).unwrap();

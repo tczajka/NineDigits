@@ -30,19 +30,6 @@ impl PlayerMain {
         }
     }
 
-    fn make_move(&mut self, mov: Move) -> Result<(), InvalidInput> {
-        self.board.make_move(mov)?;
-        if self.all_solutions_generated {
-            self.solutions =
-                self.solutions
-                    .filter(self.solutions.len(), mov.square.into(), mov.digit);
-            log::write_line!(Info, "solutions: {}", self.solutions.len());
-        } else {
-            self.solutions = SolutionTable::empty();
-        }
-        Ok(())
-    }
-
     fn midgame_choose_move_best_effort(
         &mut self,
         mut start_time: Instant,
@@ -92,30 +79,34 @@ impl PlayerMain {
                 if let Err(e) = solgen_result {
                     log::write_line!(
                         Info,
-                        "midgame defense safe {defense_index} / {num_moves} solution generate {e}"
+                        "midgame defense safe {defense_index} / {num_moves} num_solutions >= {num_solutions} {e}",
+                        num_solutions = solutions.len(),
                     );
                     return FullMove::Move(mov.mov);
                 }
+                log::write_line!(
+                    Info,
+                    "midgame defense {defense_index} / {num_moves} num_solutions = {num_solutions}",
+                    num_solutions = solutions.len()
+                );
                 match self.endgame_solver.solve(&solutions, defense_deadline) {
                     Ok(false) => {
-                        log::write_line!(
-                            Info,
-                            "midgame defense win! {defense_index} / {num_moves}"
-                        );
+                        self.solutions = solutions;
+                        self.all_solutions_generated = true;
+                        log::write_line!(Info, "win!");
                         return FullMove::Move(mov.mov);
                     }
                     Ok(true) => {
-                        if defense_index == 0 {
-                            log::write_line!(Info, "MIDGAME PANIC");
-                        }
+                        log::write_line!(Info, "midgame PANIC");
                         let t = Instant::now();
                         time_left =
                             time_left.saturating_sub(t.saturating_duration_since(start_time));
                         start_time = t;
                     }
                     Err(_) => {
-                        log::write_line!(Info, "midgame defense safe {defense_index} / {num_moves} num_solutions = {num_solutions}",
-                            num_solutions = solutions.len());
+                        log::write_line!(Info, "safe");
+                        self.solutions = solutions;
+                        self.all_solutions_generated = true;
                         return FullMove::Move(mov.mov);
                     }
                 }
@@ -135,9 +126,21 @@ impl PlayerMain {
 
 impl Player for PlayerMain {
     fn opponent_move(&mut self, mov: Move) {
-        self.make_move(mov).unwrap_or_else(|_| {
-            log::write_line!(Always, "Invalid opp move: {mov}");
-        });
+        match self.board.make_move(mov) {
+            Ok(()) => {
+                if self.all_solutions_generated {
+                    self.solutions =
+                        self.solutions
+                            .filter(self.solutions.len(), mov.square.into(), mov.digit);
+                    log::write_line!(Info, "opp move solutions: {}", self.solutions.len());
+                } else {
+                    self.solutions = SolutionTable::empty();
+                }
+            }
+            Err(InvalidInput) => {
+                log::write_line!(Always, "Invalid opp move: {mov}");
+            }
+        }
     }
 
     fn choose_move(&mut self, mut start_time: Instant, mut time_left: Duration) -> FullMove {
@@ -176,15 +179,27 @@ impl Player for PlayerMain {
             }
         }
 
-        let mov = if self.all_solutions_generated {
-            self.endgame_solver
-                .choose_move_best_effort(&self.solutions, start_time, time_left)
+        if self.all_solutions_generated {
+            let mov =
+                self.endgame_solver
+                    .choose_move_best_effort(&self.solutions, start_time, time_left);
+            if let Some(mov) = mov.to_move() {
+                self.board.make_move(mov).unwrap();
+                self.solutions =
+                    self.solutions
+                        .filter(self.solutions.len(), mov.square.into(), mov.digit);
+            }
+            mov
         } else {
-            self.midgame_choose_move_best_effort(start_time, time_left)
-        };
-        if let Some(mov) = mov.to_move() {
-            self.make_move(mov).unwrap();
+            let mov = self.midgame_choose_move_best_effort(start_time, time_left);
+            if let Some(mov) = mov.to_move() {
+                self.board.make_move(mov).unwrap();
+                // if all_solutions_generated, solutions already updated to next move by midgame_choose_move_best_effort
+                if !self.all_solutions_generated {
+                    self.solutions = SolutionTable::empty();
+                }
+            }
+            mov
         }
-        mov
     }
 }

@@ -334,7 +334,7 @@ fn main() {
 }
 
 fn pn_search_thread(
-    thread_id: u32,
+    _thread_id: u32,
     book: &Mutex<OpeningBook>,
     update_condvar: &Condvar,
     deadline: Option<Instant>,
@@ -368,7 +368,6 @@ fn pn_search_thread(
             update_ancestors(&mut book, node_id);
             (node_id, book.nodes[node_id].board)
         };
-        eprintln!("Thread {thread_id} solving: {board}");
         let outcome = solve(
             &board,
             max_solutions,

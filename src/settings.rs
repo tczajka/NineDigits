@@ -14,11 +14,11 @@ pub const ENDGAME_DEFENSE_TIME_FRACTION: f64 = 0.2;
 // Solution generation.
 pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;
 pub const SOLUTIONS_MIN: u32 = 100;
-pub const SOLUTIONS_MAX: u32 = 100_000;
+pub const SOLUTIONS_MAX: u32 = 50_000;
 
 // Midgame.
 pub const MIDGAME_RANDOMIZE_FRACTION: Option<f64> = Some(0.9);
-pub const MIDGAME_DEFENSE_SOLUTIONS_MAX: u32 = 50_000;
+pub const MIDGAME_DEFENSE_SOLUTIONS_MAX: u32 = 40_000;
 
 // Endgame.
 pub const ENDGAME_CHECK_TIME_NODES: u64 = 1024;

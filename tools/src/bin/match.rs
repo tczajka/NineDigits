@@ -105,11 +105,6 @@ fn run_matches(match_info: &Mutex<MatchInfo>) {
                 log_files,
             );
             let real_winner = winner ^ side;
-            eprintln!(
-                "Match {game_name}: {}{}",
-                ["A", "B"][real_winner],
-                if failure { " failure" } else { "" }
-            );
             let mut match_info = match_info.lock().unwrap();
             match_info.wins[real_winner] += 1;
             if failure {
@@ -118,6 +113,13 @@ fn run_matches(match_info: &Mutex<MatchInfo>) {
             for i in 0..2 {
                 match_info.max_time[i] = match_info.max_time[i].max(times[i ^ side]);
             }
+            eprintln!(
+                "Match {game_name}: {}{} {} - {}",
+                ["A", "B"][real_winner],
+                if failure { " failure" } else { "" },
+                match_info.wins[0],
+                match_info.wins[1],
+            );
         }
     }
 }

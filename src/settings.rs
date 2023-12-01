@@ -1,23 +1,24 @@
 use std::time::Duration;
 
-// Time allocation.
 #[cfg(feature = "tomeks_computer")]
 pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(10_000);
 #[cfg(not(feature = "tomeks_computer"))]
 pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(29_700);
 
+// Time allocation.
 pub const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.2;
 pub const MIDGAME_DEFENSE_TIME_FRACTION: f64 = 0.2;
 pub const ENDGAME_OFFENSE_TIME_FRACTION: f64 = 0.2;
 pub const ENDGAME_DEFENSE_TIME_FRACTION: f64 = 0.2;
 
-// Solution generation.
-pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;
-pub const SOLUTIONS_MIN: u32 = 100;
-pub const SOLUTIONS_MAX: u32 = 50_000;
+// Opening.
+pub const OPENING_MAX_SQUARES: u8 = 14;
 
 // Midgame.
+pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;
 pub const MIDGAME_RANDOMIZE_FRACTION: Option<f64> = Some(0.9);
+pub const SOLUTIONS_MIN: u32 = 100;
+pub const SOLUTIONS_MAX: u32 = 50_000;
 pub const MIDGAME_DEFENSE_SOLUTIONS_MAX: u32 = 40_000;
 
 // Endgame.

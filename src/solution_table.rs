@@ -164,7 +164,7 @@ impl SolutionTable {
         {
             let mut compressed_num_moves = 0;
             let mut square_compression = SquareCompression {
-                prev_index: square_index,
+                prev_index: square_index as u8,
                 digit_map: [OptionalDigit::NONE; 9],
                 move_summaries: [MoveSummary::default(); 9],
             };
@@ -192,7 +192,10 @@ impl SolutionTable {
             for (compressed_digit, square_compression) in
                 compressed_digits.iter_mut().zip(square_compressions.iter())
             {
-                let prev_digit = prev_digits[square_compression.prev_index];
+                // Safety: prev_index is valid.
+                let prev_digit = *unsafe {
+                    prev_digits.get_unchecked(usize::from(square_compression.prev_index))
+                };
                 let opt_digit = square_compression.digit_map[prev_digit].to_digit();
                 // Safety: digit_map contains prev_digit.
                 *compressed_digit = unsafe { opt_digit.unwrap_unchecked() };
@@ -231,7 +234,7 @@ pub struct MoveSummary {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SquareCompression {
-    pub prev_index: usize,
+    pub prev_index: u8,
     // prev -> current
     pub digit_map: [OptionalDigit; 9],
     // current move summaries

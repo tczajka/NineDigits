@@ -28,7 +28,8 @@ impl TranspositionTable {
     }
 
     pub fn find(&self, hash: u64) -> Option<bool> {
-        let bucket = &self.table[(hash as usize) & self.index_mask];
+        // Safety: index_mask guarantees the index is in range.
+        let bucket = unsafe { self.table.get_unchecked((hash as usize) & self.index_mask) };
         for entry in &bucket.entries {
             if entry.hash == hash {
                 return Some(entry.result);
@@ -38,7 +39,11 @@ impl TranspositionTable {
     }
 
     pub fn insert(&mut self, hash: u64, num_solutions: u32, result: bool) {
-        let bucket = &mut self.table[(hash as usize) & self.index_mask];
+        // Safety: index_mask guarantees the index is in range.
+        let bucket = unsafe {
+            self.table
+                .get_unchecked_mut((hash as usize) & self.index_mask)
+        };
         let best_entry = bucket
             .entries
             .iter_mut()

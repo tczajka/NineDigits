@@ -30,6 +30,20 @@ impl PlayerMain {
         }
     }
 
+    fn choose_opening_move(&mut self, start_time: Instant) -> Option<Move> {
+        let moves = midgame::generate_moves(&mut self.board, &SolutionTable::empty());
+        log::write_line!(
+            Info,
+            "opening movegen time {:.3?}",
+            Instant::now().saturating_duration_since(start_time)
+        );
+        if 81 - self.board.empty_squares().size() <= settings::OPENING_MAX_SQUARES {
+            Some(self.rng.choose(&moves).mov)
+        } else {
+            None
+        }
+    }
+
     fn midgame_choose_move_best_effort(
         &mut self,
         mut start_time: Instant,
@@ -144,6 +158,12 @@ impl Player for PlayerMain {
     }
 
     fn choose_move(&mut self, mut start_time: Instant, mut time_left: Duration) -> FullMove {
+        if 81 - self.board.empty_squares().size() <= settings::OPENING_MAX_SQUARES {
+            if let Some(mov) = self.choose_opening_move(start_time) {
+                self.board.make_move(mov).unwrap();
+                return FullMove::Move(mov);
+            }
+        }
         if !self.all_solutions_generated {
             let (res, solutions) = SolutionTable::generate(
                 &self.board,

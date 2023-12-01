@@ -64,6 +64,8 @@ impl EndgameSolver {
 
         let offense_deadline =
             start_time + time_left.mul_f64(settings::ENDGAME_OFFENSE_TIME_FRACTION);
+        let offense_deadline_extended =
+            start_time + time_left.mul_f64(settings::ENDGAME_OFFENSE_EXTENDED_TIME_FRACTION);
 
         let mut offense_index = 0;
         loop {
@@ -73,8 +75,11 @@ impl EndgameSolver {
                 self.log_stats(start_time, Instant::now());
                 return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
             }
-            // TODO: Check smaller deadline here.
-            match self.solve_move(&solutions, mov, offense_deadline) {
+            if Instant::now() > offense_deadline {
+                log::write_line!(Info, "endgame offense {offense_index} / {num_moves}");
+                break;
+            }
+            match self.solve_move(&solutions, mov, offense_deadline_extended) {
                 Ok(true) => {
                     // Found a winning move.
                     log::write_line!(Info, "endgame win {offense_index} / {num_moves}");

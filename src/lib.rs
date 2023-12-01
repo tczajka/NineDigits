@@ -14,7 +14,7 @@ pub mod error;
 pub mod fast_solver;
 pub mod log;
 pub mod midgame;
-pub mod permutation;
+pub mod permutation; // submission::skip
 pub mod platform;
 pub mod player;
 pub mod player_main;
@@ -31,5 +31,5 @@ pub mod small;
 pub mod small_set;
 pub mod solution_table;
 pub mod solver;
-pub mod symmetry;
+pub mod symmetry; // submission::skip
 pub mod transposition_table;

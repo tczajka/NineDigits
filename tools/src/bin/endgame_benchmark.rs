@@ -86,7 +86,11 @@ fn run_benchmark(input_file_name: &Path, ttable_memory: usize) -> Result<(), Box
         statistics_generate.total_time += generated_time.saturating_duration_since(start_time);
 
         let win = endgame_solver
-            .solve(&solutions, start_time + Duration::from_secs(24 * 3600))
+            .solve(
+                &solutions,
+                start_time + Duration::from_secs(24 * 3600),
+                None,
+            )
             .unwrap();
         let endgame_duration = Instant::now().saturating_duration_since(generated_time);
         let statistics = if win {

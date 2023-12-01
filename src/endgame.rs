@@ -79,7 +79,7 @@ impl EndgameSolver {
                 log::write_line!(Info, "endgame offense {offense_index} / {num_moves}");
                 break;
             }
-            match self.solve_move(&solutions, mov, offense_deadline_extended) {
+            match self.solve_move(&solutions, mov, offense_deadline_extended, None) {
                 Ok(true) => {
                     // Found a winning move.
                     log::write_line!(Info, "endgame win {offense_index} / {num_moves}");
@@ -109,7 +109,14 @@ impl EndgameSolver {
         for (defense_index, mov) in moves[offense_index..].iter().rev().enumerate() {
             let defense_deadline =
                 start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_TIME_FRACTION);
-            match self.solve_move(&solutions, mov, defense_deadline) {
+            let defense_deadline_extended =
+                start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_EXTENDED_TIME_FRACTION);
+            match self.solve_move(
+                &solutions,
+                mov,
+                defense_deadline_extended,
+                Some(defense_deadline),
+            ) {
                 Ok(true) => {
                     log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);
                     self.log_stats(defense_start_time, Instant::now());
@@ -147,6 +154,7 @@ impl EndgameSolver {
         &mut self,
         solutions: &SolutionTable,
         deadline: Instant,
+        deadline_toplevel: Option<Instant>,
     ) -> Result<bool, ResourcesExceeded> {
         self.transposition_table.new_era();
         self.num_nodes = 0;
@@ -158,7 +166,7 @@ impl EndgameSolver {
             return Ok(result);
         }
         let start_time = Instant::now();
-        let res = self.solve_recursive(solutions, deadline);
+        let res = self.solve_recursive(solutions, deadline, deadline_toplevel);
         self.log_stats(start_time, Instant::now());
         res
     }
@@ -188,7 +196,7 @@ impl EndgameSolver {
         moves.sort_by_key(|x| x.summary.num_solutions);
 
         for mov in &moves {
-            if self.solve_move(&solutions, mov, deadline)? {
+            if self.solve_move(&solutions, mov, deadline, None)? {
                 return Ok((
                     true,
                     Some(FullMove::Move(Self::uncompress_root_move(
@@ -206,6 +214,7 @@ impl EndgameSolver {
         &mut self,
         solutions: &SolutionTable,
         deadline: Instant,
+        deadline_toplevel: Option<Instant>,
     ) -> Result<bool, ResourcesExceeded> {
         self.num_nodes += 1;
 
@@ -228,7 +237,12 @@ impl EndgameSolver {
 
             let mut result = false;
             for mov in moves.iter() {
-                if self.solve_move(&solutions, mov, deadline)? {
+                if let Some(deadline_toplevel) = deadline_toplevel {
+                    if Instant::now() >= deadline_toplevel {
+                        return Err(ResourcesExceeded::Time);
+                    }
+                }
+                if self.solve_move(&solutions, mov, deadline, None)? {
                     result = true;
                     break;
                 }
@@ -245,6 +259,7 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         mov: &EndgameMove,
         deadline: Instant,
+        deadline_toplevel: Option<Instant>,
     ) -> Result<bool, ResourcesExceeded> {
         if mov.summary.num_solutions < 4 {
             return Ok(mov.summary.num_solutions == 1);
@@ -259,7 +274,7 @@ impl EndgameSolver {
         );
         assert_eq!(new_solutions.len(), mov.summary.num_solutions);
         assert_eq!(new_solutions.hash(), mov.summary.hash);
-        let res = self.solve_recursive(&new_solutions, deadline)?;
+        let res = self.solve_recursive(&new_solutions, deadline, deadline_toplevel)?;
         Ok(!res)
     }
 

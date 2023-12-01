@@ -81,6 +81,8 @@ impl PlayerMain {
             if mov.num_solutions_lower_bound <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX {
                 let defense_deadline =
                     start_time + time_left.mul_f64(settings::MIDGAME_DEFENSE_TIME_FRACTION);
+                let defense_deadline_extended = start_time
+                    + time_left.mul_f64(settings::MIDGAME_DEFENSE_EXTENDED_TIME_FRACTION);
                 let mut new_board = self.board;
                 new_board.make_move(mov.mov).unwrap();
                 let (solgen_result, solutions) = SolutionTable::generate(
@@ -103,7 +105,11 @@ impl PlayerMain {
                     "midgame defense {defense_index} / {num_moves} num_solutions = {num_solutions}",
                     num_solutions = solutions.len()
                 );
-                match self.endgame_solver.solve(&solutions, defense_deadline) {
+                match self.endgame_solver.solve(
+                    &solutions,
+                    defense_deadline_extended,
+                    Some(defense_deadline),
+                ) {
                     Ok(false) => {
                         self.solutions = solutions;
                         self.all_solutions_generated = true;

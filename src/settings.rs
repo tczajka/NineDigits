@@ -19,7 +19,7 @@ pub const OPENING_MAX_SQUARES: u8 = 12;
 pub const SOLUTION_GENERATE_CHECK_TIME_ITERS: u64 = 1024;
 pub const MIDGAME_RANDOMIZE_FRACTION: Option<f64> = None;
 pub const SOLUTIONS_MIN: u32 = 100;
-pub const SOLUTIONS_MAX: u32 = 50_000;
+pub const SOLUTIONS_MAX: u32 = 70_000;
 pub const MIDGAME_DEFENSE_SOLUTIONS_MAX: u32 = 40_000;
 
 // Endgame.

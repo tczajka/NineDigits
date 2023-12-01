@@ -1,8 +1,8 @@
 #/bin/bash
 set -e
-  -i data/kaggle.in \
 cargo run --release -p tools --bin solver_benchmark -- \
   -i data/magic_1465.in \
+  -i data/kaggle.in \
   -i data/hardest26.in \
   -i data/most_17.in \
   -i data/in1000x100 \

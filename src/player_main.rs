@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::{
     board::{Board, FullMove, Move},
-    endgame::EndgameSolver,
+    endgame::{EndgameResult, EndgameSolver},
     error::InvalidInput,
     log, midgame,
     player::Player,
@@ -55,20 +55,6 @@ impl PlayerMain {
         assert!(!moves.is_empty());
         moves.sort_by_key(|x| x.num_solutions_lower_bound);
 
-        if let Some(fraction) = settings::MIDGAME_RANDOMIZE_FRACTION {
-            let best_solutions = moves.last().unwrap().num_solutions_lower_bound;
-            let min_solutions =
-                ((best_solutions as f64 * fraction) as u32).clamp(2, best_solutions);
-            let mut shuffle_from = num_moves - 1;
-            while shuffle_from != 0
-                && moves[shuffle_from - 1].num_solutions_lower_bound >= min_solutions
-            {
-                shuffle_from -= 1;
-            }
-            log::write_line!(Info, "shuffling {n} moves", n = num_moves - shuffle_from);
-            self.rng.shuffle(&mut moves[shuffle_from..]);
-        }
-
         {
             let t = Instant::now();
             let used_time = t.saturating_duration_since(start_time);
@@ -77,7 +63,10 @@ impl PlayerMain {
             log::write_line!(Info, "midgame movegen time {used_time:.3?}",);
         }
 
-        for (defense_index, mov) in moves.iter().rev().enumerate() {
+        let mut best_losing_move_index = num_moves - 1;
+        let mut best_losing_move_difficulty = 0;
+
+        for (defense_index, mov) in moves.iter().enumerate().rev() {
             if mov.num_solutions_lower_bound <= settings::MIDGAME_DEFENSE_SOLUTIONS_MAX {
                 let defense_deadline =
                     start_time + time_left.mul_f64(settings::MIDGAME_DEFENSE_TIME_FRACTION);
@@ -107,17 +96,21 @@ impl PlayerMain {
                 );
                 match self.endgame_solver.solve(
                     &solutions,
+                    defense_deadline,
                     defense_deadline_extended,
-                    Some(defense_deadline),
                 ) {
-                    Ok(false) => {
+                    Ok(EndgameResult::Loss) => {
                         self.solutions = solutions;
                         self.all_solutions_generated = true;
                         log::write_line!(Info, "win!");
                         return FullMove::Move(mov.mov);
                     }
-                    Ok(true) => {
+                    Ok(EndgameResult::Win { difficulty }) => {
                         log::write_line!(Info, "midgame PANIC");
+                        if difficulty > best_losing_move_difficulty {
+                            best_losing_move_index = defense_index;
+                            best_losing_move_difficulty = difficulty;
+                        }
                         let t = Instant::now();
                         time_left =
                             time_left.saturating_sub(t.saturating_duration_since(start_time));
@@ -139,8 +132,11 @@ impl PlayerMain {
                 return FullMove::Move(mov.mov);
             }
         }
-        log::write_line!(Info, "midgame lost");
-        FullMove::Move(moves.last().unwrap().mov)
+        log::write_line!(
+            Info,
+            "midgame lost difficulty={best_losing_move_difficulty}"
+        );
+        FullMove::Move(moves[best_losing_move_index].mov)
     }
 }
 

@@ -8,7 +8,10 @@ use std::{
     time::{Duration, Instant},
 };
 use sudoku_game::{
-    board::Board, endgame::EndgameSolver, random::RandomGenerator, solution_table::SolutionTable,
+    board::Board,
+    endgame::{EndgameResult, EndgameSolver},
+    random::RandomGenerator,
+    solution_table::SolutionTable,
 };
 
 #[derive(Debug, Parser)]
@@ -85,18 +88,17 @@ fn run_benchmark(input_file_name: &Path, ttable_memory: usize) -> Result<(), Box
         statistics_generate.total_solutions += u64::try_from(solutions.len()).unwrap();
         statistics_generate.total_time += generated_time.saturating_duration_since(start_time);
 
-        let win = endgame_solver
+        let result = endgame_solver
             .solve(
                 &solutions,
                 start_time + Duration::from_secs(24 * 3600),
-                None,
+                start_time + Duration::from_secs(24 * 3600),
             )
             .unwrap();
         let endgame_duration = Instant::now().saturating_duration_since(generated_time);
-        let statistics = if win {
-            &mut statistics_win
-        } else {
-            &mut statistics_lose
+        let statistics = match result {
+            EndgameResult::Win { .. } => &mut statistics_win,
+            EndgameResult::Loss => &mut statistics_lose,
         };
         statistics.num_puzzles += 1;
         statistics.total_solutions += u64::try_from(solutions.len()).unwrap();

@@ -77,12 +77,7 @@ impl EndgameSolver {
                 break;
             }
             let mov = &moves[offense_index];
-            match self.solve_after_move_with_difficulty(
-                &solutions,
-                mov,
-                offense_deadline_extended,
-                offense_deadline_extended,
-            ) {
+            match self.solve_after_move(&solutions, mov, None, offense_deadline_extended) {
                 Ok(EndgameResult::Loss) => {
                     // Found a winning move.
                     log::write_line!(Info, "endgame win {offense_index} / {num_moves}");
@@ -119,10 +114,10 @@ impl EndgameSolver {
             let defense_deadline_extended =
                 start_time + time_left.mul_f64(settings::ENDGAME_DEFENSE_EXTENDED_TIME_FRACTION);
 
-            match self.solve_after_move_with_difficulty(
+            match self.solve_after_move(
                 &solutions,
                 mov,
-                defense_deadline,
+                Some(defense_deadline),
                 defense_deadline_extended,
             ) {
                 Ok(EndgameResult::Loss) => {
@@ -185,32 +180,41 @@ impl EndgameSolver {
         if solutions.len() < 4 {
             return Ok(EndgameResult::Win { difficulty: 0 });
         }
-        if let Some(result) = self.transposition_table.find(solutions.hash()) {
+        if let Some((result, difficulty)) = self.transposition_table.find(solutions.hash()) {
             return Ok(if result {
-                EndgameResult::Loss
+                EndgameResult::Win { difficulty }
             } else {
-                EndgameResult::Win { difficulty: 1 }
+                EndgameResult::Loss
             });
         }
 
-        let result = self.solve_with_difficulty(solutions, deadline, deadline_extended)?;
+        let result = self.solve_recursive(solutions, Some(deadline), deadline_extended)?;
         self.log_stats(start_time, Instant::now());
         Ok(result)
     }
 
-    fn solve_with_difficulty(
+    fn solve_recursive(
         &mut self,
         solutions: &SolutionTable,
-        deadline: Instant,
+        deadline_toplevel: Option<Instant>,
         deadline_extended: Instant,
     ) -> Result<EndgameResult, ResourcesExceeded> {
+        self.num_nodes += 1;
+
+        if self.num_nodes % settings::ENDGAME_CHECK_TIME_NODES == 0
+            && Instant::now() >= deadline_extended
+        {
+            return Err(ResourcesExceeded::Time);
+        }
+
         let move_summaries = solutions.move_summaries();
-        let result = if self.check_quick_win(
-            solutions.num_moves_per_square(),
-            solutions.len(),
-            &move_summaries,
-        ) {
-            EndgameResult::Win { difficulty: 1 }
+        let result = if let EndgameResult::Win { difficulty } = self
+            .check_quick_win_with_difficulty(
+                solutions.num_moves_per_square(),
+                solutions.len(),
+                &move_summaries,
+            ) {
+            EndgameResult::Win { difficulty }
         } else {
             let (solutions, square_compressions) = solutions.compress(&move_summaries);
 
@@ -220,10 +224,14 @@ impl EndgameSolver {
             let mut result = EndgameResult::Loss;
 
             for mov in moves.iter() {
-                if Instant::now() >= deadline {
-                    return Err(ResourcesExceeded::Time);
+                if let Some(deadline_toplevel) = deadline_toplevel {
+                    if Instant::now() >= deadline_toplevel {
+                        return Err(ResourcesExceeded::Time);
+                    }
                 }
-                if !self.solve_after_move(&solutions, mov, deadline_extended)? {
+                if let EndgameResult::Loss =
+                    self.solve_after_move(&solutions, mov, None, deadline_extended)?
+                {
                     result = EndgameResult::Win {
                         difficulty: mov.summary.num_solutions,
                     };
@@ -232,50 +240,16 @@ impl EndgameSolver {
             }
             result
         };
-        self.transposition_table.insert(
-            solutions.hash(),
-            solutions.len(),
-            matches!(result, EndgameResult::Win { .. }),
-        );
-        Ok(result)
-    }
-
-    /// Already checked that there are at least 4 solutions and that this not in the transposition table.
-    fn solve_recursive(
-        &mut self,
-        solutions: &SolutionTable,
-        deadline: Instant,
-    ) -> Result<bool, ResourcesExceeded> {
-        self.num_nodes += 1;
-
-        if self.num_nodes % settings::ENDGAME_CHECK_TIME_NODES == 0 && Instant::now() >= deadline {
-            return Err(ResourcesExceeded::Time);
-        }
-
-        let move_summaries = solutions.move_summaries();
-
-        let result = self.check_quick_win(
-            solutions.num_moves_per_square(),
-            solutions.len(),
-            &move_summaries,
-        ) || {
-            let (solutions, square_compressions) = solutions.compress(&move_summaries);
-
-            let mut moves =
-                Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
-            moves.sort_by_key(|x| x.summary.num_solutions);
-
-            let mut result = false;
-            for mov in &moves {
-                if !self.solve_after_move(&solutions, mov, deadline)? {
-                    result = true;
-                    break;
-                }
+        match result {
+            EndgameResult::Win { difficulty } => {
+                self.transposition_table
+                    .insert(solutions.hash(), difficulty, true);
             }
-            result
-        };
-        self.transposition_table
-            .insert(solutions.hash(), solutions.len(), result);
+            EndgameResult::Loss => {
+                self.transposition_table
+                    .insert(solutions.hash(), solutions.len(), false);
+            }
+        }
         Ok(result)
     }
 
@@ -283,29 +257,7 @@ impl EndgameSolver {
         &mut self,
         solutions: &SolutionTable,
         mov: &EndgameMove,
-        deadline: Instant,
-    ) -> Result<bool, ResourcesExceeded> {
-        if mov.summary.num_solutions < 4 {
-            return Ok(mov.summary.num_solutions != 1);
-        }
-        if let Some(result) = self.transposition_table.find(mov.summary.hash) {
-            return Ok(result);
-        }
-        let new_solutions = solutions.filter(
-            mov.summary.num_solutions,
-            mov.square_index.into(),
-            mov.digit,
-        );
-        assert_eq!(new_solutions.len(), mov.summary.num_solutions);
-        assert_eq!(new_solutions.hash(), mov.summary.hash);
-        self.solve_recursive(&new_solutions, deadline)
-    }
-
-    fn solve_after_move_with_difficulty(
-        &mut self,
-        solutions: &SolutionTable,
-        mov: &EndgameMove,
-        deadline: Instant,
+        deadline_toplevel: Option<Instant>,
         deadline_extended: Instant,
     ) -> Result<EndgameResult, ResourcesExceeded> {
         if mov.summary.num_solutions == 1 {
@@ -314,9 +266,9 @@ impl EndgameSolver {
         if mov.summary.num_solutions < 4 {
             return Ok(EndgameResult::Win { difficulty: 0 });
         }
-        if let Some(result) = self.transposition_table.find(mov.summary.hash) {
+        if let Some((result, difficulty)) = self.transposition_table.find(mov.summary.hash) {
             return Ok(if result {
-                EndgameResult::Win { difficulty: 1 }
+                EndgameResult::Win { difficulty }
             } else {
                 EndgameResult::Loss
             });
@@ -328,7 +280,7 @@ impl EndgameSolver {
         );
         assert_eq!(new_solutions.len(), mov.summary.num_solutions);
         assert_eq!(new_solutions.hash(), mov.summary.hash);
-        self.solve_with_difficulty(&new_solutions, deadline, deadline_extended)
+        self.solve_recursive(&new_solutions, deadline_toplevel, deadline_extended)
     }
 
     fn check_quick_win_root(
@@ -352,7 +304,10 @@ impl EndgameSolver {
             for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
                 if move_summary.num_solutions >= 4
                     && move_summary.num_solutions < num_solutions
-                    && self.transposition_table.find(move_summary.hash) == Some(false)
+                    && matches!(
+                        self.transposition_table.find(move_summary.hash),
+                        Some((false, _))
+                    )
                 {
                     return Some(FullMove::Move(Move {
                         square: square.try_into().unwrap(),
@@ -365,19 +320,19 @@ impl EndgameSolver {
         None
     }
 
-    fn check_quick_win(
+    fn check_quick_win_with_difficulty(
         &self,
         num_moves_per_square: &[u8],
         num_solutions: u32,
         move_summaries: &[[MoveSummary; 9]],
-    ) -> bool {
+    ) -> EndgameResult {
         assert_eq!(num_moves_per_square.len(), move_summaries.len());
         for (&num_moves, move_summaries_sq) in
             num_moves_per_square.iter().zip(move_summaries.iter())
         {
             for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
                 if move_summary.num_solutions == 1 {
-                    return true;
+                    return EndgameResult::Win { difficulty: 1 };
                 }
             }
         }
@@ -389,13 +344,18 @@ impl EndgameSolver {
             for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
                 if move_summary.num_solutions >= 4
                     && move_summary.num_solutions < num_solutions
-                    && self.transposition_table.find(move_summary.hash) == Some(false)
+                    && matches!(
+                        self.transposition_table.find(move_summary.hash),
+                        Some((false, _))
+                    )
                 {
-                    return true;
+                    return EndgameResult::Win {
+                        difficulty: move_summary.num_solutions,
+                    };
                 }
             }
         }
-        false
+        EndgameResult::Loss
     }
 
     fn uncompress_root_move(mov: &EndgameMove, square_compressions: &[SquareCompression]) -> Move {

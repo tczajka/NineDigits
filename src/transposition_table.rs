@@ -27,18 +27,18 @@ impl TranspositionTable {
         self.era = self.era.wrapping_add(1);
     }
 
-    pub fn find(&self, hash: u64) -> Option<bool> {
+    pub fn find(&self, hash: u64) -> Option<(bool, u32)> {
         // Safety: index_mask guarantees the index is in range.
         let bucket = unsafe { self.table.get_unchecked((hash as usize) & self.index_mask) };
         for entry in &bucket.entries {
             if entry.hash == hash {
-                return Some(entry.result);
+                return Some((entry.result, entry.difficulty));
             }
         }
         None
     }
 
-    pub fn insert(&mut self, hash: u64, num_solutions: u32, result: bool) {
+    pub fn insert(&mut self, hash: u64, difficulty: u32, result: bool) {
         // Safety: index_mask guarantees the index is in range.
         let bucket = unsafe {
             self.table
@@ -47,16 +47,10 @@ impl TranspositionTable {
         let best_entry = bucket
             .entries
             .iter_mut()
-            .min_by_key(|entry| {
-                (
-                    entry.hash != hash,
-                    entry.era == self.era,
-                    entry.num_solutions,
-                )
-            })
+            .min_by_key(|entry| (entry.hash != hash, entry.era == self.era, entry.difficulty))
             .unwrap();
         best_entry.hash = hash;
-        best_entry.num_solutions = num_solutions;
+        best_entry.difficulty = difficulty;
         best_entry.result = result;
         best_entry.era = self.era;
     }
@@ -65,7 +59,7 @@ impl TranspositionTable {
 #[derive(Copy, Clone, Debug)]
 struct Entry {
     hash: u64,
-    num_solutions: u32,
+    difficulty: u32,
     result: bool,
     era: u8,
 }
@@ -74,7 +68,7 @@ impl Entry {
     fn new() -> Self {
         Self {
             hash: 0,
-            num_solutions: 0,
+            difficulty: 0,
             result: false,
             era: 0,
         }

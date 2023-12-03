@@ -208,12 +208,11 @@ impl EndgameSolver {
         }
 
         let move_summaries = solutions.move_summaries();
-        let result = if let EndgameResult::Win { difficulty } = self
-            .check_quick_win_with_difficulty(
-                solutions.num_moves_per_square(),
-                solutions.len(),
-                &move_summaries,
-            ) {
+        let result = if let EndgameResult::Win { difficulty } = self.check_quick_win(
+            solutions.num_moves_per_square(),
+            solutions.len(),
+            &move_summaries,
+        ) {
             EndgameResult::Win { difficulty }
         } else {
             let (solutions, square_compressions) = solutions.compress(&move_summaries);
@@ -320,7 +319,7 @@ impl EndgameSolver {
         None
     }
 
-    fn check_quick_win_with_difficulty(
+    fn check_quick_win(
         &self,
         num_moves_per_square: &[u8],
         num_solutions: u32,

@@ -91,7 +91,7 @@ fn run_benchmark(input_file_name: &Path, ttable_memory: usize) -> Result<(), Box
         let result = endgame_solver
             .solve(
                 &solutions,
-                start_time + Duration::from_secs(24 * 3600),
+                None,
                 start_time + Duration::from_secs(24 * 3600),
             )
             .unwrap();

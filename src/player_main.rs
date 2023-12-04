@@ -96,7 +96,7 @@ impl PlayerMain {
                 );
                 match self.endgame_solver.solve(
                     &solutions,
-                    defense_deadline,
+                    Some(defense_deadline),
                     defense_deadline_extended,
                 ) {
                     Ok(EndgameResult::Loss) => {

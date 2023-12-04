@@ -163,8 +163,8 @@ impl EndgameSolver {
     pub fn solve(
         &mut self,
         solutions: &SolutionTable,
+        deadline_toplevel: Option<Instant>,
         deadline: Instant,
-        deadline_extended: Instant,
     ) -> Result<EndgameResult, ResourcesExceeded> {
         let start_time = Instant::now();
         self.transposition_table.new_era();
@@ -188,7 +188,7 @@ impl EndgameSolver {
             });
         }
 
-        let result = self.solve_recursive(solutions, Some(deadline), deadline_extended)?;
+        let result = self.solve_recursive(solutions, deadline_toplevel, deadline)?;
         self.log_stats(start_time, Instant::now());
         Ok(result)
     }

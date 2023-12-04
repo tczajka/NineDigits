@@ -176,9 +176,18 @@ fn analyze_game(
         }
         eprintln!("Analyzing endgame num_solutions = {}", solutions.len());
         let start_time = Instant::now();
-        let endgame_result = endgame_solver
-            .solve(&solutions, None, Instant::now() + Duration::from_secs(3600))
-            .unwrap();
+        let endgame_result =
+            match endgame_solver.solve(&solutions, None, Instant::now() + Duration::from_secs(120))
+            {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!("Can't analyze endgame: {e}");
+                    statistics.num_games += 1;
+                    statistics.total_log_num_solutions += (MAX_SOLUTIONS as f64).ln();
+                    statistics.total_log_difficulty += (MAX_SOLUTIONS as f64).ln();
+                    return;
+                }
+            };
         eprintln!(
             "Result: {endgame_result:?} time={:.3?}",
             start_time.elapsed()

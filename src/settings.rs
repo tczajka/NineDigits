@@ -3,7 +3,7 @@ use std::time::Duration;
 #[cfg(feature = "tomeks_computer")]
 pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(10_000);
 #[cfg(not(feature = "tomeks_computer"))]
-pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(29_700);
+pub const GAME_TIME_LIMIT: Duration = Duration::from_millis(29_800);
 
 // Time allocation.
 pub const SOLUTION_GENERATE_TIME_FRACTION: f64 = 0.2;

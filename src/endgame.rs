@@ -73,7 +73,7 @@ impl EndgameSolver {
 
         while offense_index < num_moves {
             if Instant::now() > offense_deadline {
-                log::write_line!(Info, "endgame offense {offense_index} / {num_moves} time");
+                log::write_line!(Info, "endgame offense {offense_index} / {num_moves}");
                 break;
             }
             let mov = &moves[offense_index];
@@ -136,7 +136,11 @@ impl EndgameSolver {
                 settings::ENDGAME_DEFENSE_DIFFICULTY_MAX,
             ) {
                 Ok(EndgameResult::Loss) => {
-                    log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);
+                    log::write_line!(
+                        Info,
+                        "endgame defense win! {defense_index} / {num_moves} difficulty = {}",
+                        mov.summary.num_solutions,
+                    );
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
                 }
@@ -156,7 +160,8 @@ impl EndgameSolver {
                 Err(e) => {
                     log::write_line!(
                         Info,
-                        "endgame defense safe: {defense_index} / {num_moves} {e}",
+                        "endgame defense safe: {defense_index} / {num_moves} num_solutions={} {e}",
+                        mov.summary.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));

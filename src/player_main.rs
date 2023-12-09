@@ -117,8 +117,8 @@ impl PlayerMain {
                             time_left.saturating_sub(t.saturating_duration_since(start_time));
                         start_time = t;
                     }
-                    Err(_) => {
-                        log::write_line!(Info, "safe");
+                    Err(e) => {
+                        log::write_line!(Info, "safe {e}");
                         self.solutions = solutions;
                         self.all_solutions_generated = true;
                         return FullMove::Move(mov.mov);

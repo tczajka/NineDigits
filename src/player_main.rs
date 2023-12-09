@@ -107,7 +107,7 @@ impl PlayerMain {
                         return FullMove::Move(mov.mov);
                     }
                     Ok(EndgameResult::Win { difficulty }) => {
-                        log::write_line!(Info, "midgame PANIC");
+                        log::write_line!(Info, "midgame PANIC difficulty={difficulty}");
                         if difficulty > best_losing_move_difficulty {
                             best_losing_move_index = defense_index;
                             best_losing_move_difficulty = difficulty;

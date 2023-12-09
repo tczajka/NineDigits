@@ -73,14 +73,28 @@ impl EndgameSolver {
 
         while offense_index < num_moves {
             if Instant::now() > offense_deadline {
-                log::write_line!(Info, "endgame offense {offense_index} / {num_moves}");
+                log::write_line!(Info, "endgame offense {offense_index} / {num_moves} time");
                 break;
             }
             let mov = &moves[offense_index];
-            match self.solve_after_move(&solutions, mov, None, offense_deadline_extended) {
+            if let Some(difficulty_max) = settings::ENDGAME_OFFENSE_DIFFICULTY_MAX {
+                if mov.summary.num_solutions > difficulty_max {
+                    log::write_line!(
+                        Info,
+                        "endgame offense {offense_index} / {num_moves} {}",
+                        ResourcesExceeded::Difficulty(mov.summary.num_solutions)
+                    );
+                    break;
+                }
+            }
+            match self.solve_after_move(&solutions, mov, None, offense_deadline_extended, None) {
                 Ok(EndgameResult::Loss) => {
                     // Found a winning move.
-                    log::write_line!(Info, "endgame win {offense_index} / {num_moves}");
+                    log::write_line!(
+                        Info,
+                        "endgame win {offense_index} / {num_moves} difficulty={}",
+                        mov.summary.num_solutions
+                    );
                     self.log_stats(start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
                 }
@@ -119,6 +133,7 @@ impl EndgameSolver {
                 mov,
                 Some(defense_deadline),
                 defense_deadline_extended,
+                settings::ENDGAME_DEFENSE_DIFFICULTY_MAX,
             ) {
                 Ok(EndgameResult::Loss) => {
                     log::write_line!(Info, "endgame defense win! {defense_index} / {num_moves}",);
@@ -165,6 +180,7 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         deadline_toplevel: Option<Instant>,
         deadline: Instant,
+        difficulty_max: Option<u32>,
     ) -> Result<EndgameResult, ResourcesExceeded> {
         let start_time = Instant::now();
         self.transposition_table.new_era();
@@ -188,7 +204,8 @@ impl EndgameSolver {
             });
         }
 
-        let result = self.solve_recursive(solutions, deadline_toplevel, deadline)?;
+        let result =
+            self.solve_recursive(solutions, deadline_toplevel, deadline, difficulty_max)?;
         self.log_stats(start_time, Instant::now());
         Ok(result)
     }
@@ -198,6 +215,7 @@ impl EndgameSolver {
         solutions: &SolutionTable,
         deadline_toplevel: Option<Instant>,
         deadline_extended: Instant,
+        difficulty_max: Option<u32>,
     ) -> Result<EndgameResult, ResourcesExceeded> {
         self.num_nodes += 1;
 
@@ -223,13 +241,18 @@ impl EndgameSolver {
             let mut result = EndgameResult::Loss;
 
             for mov in moves.iter() {
+                if let Some(difficulty_max) = difficulty_max {
+                    if mov.summary.num_solutions > difficulty_max {
+                        Err(ResourcesExceeded::Difficulty(mov.summary.num_solutions))?;
+                    }
+                }
                 if let Some(deadline_toplevel) = deadline_toplevel {
                     if Instant::now() >= deadline_toplevel {
                         return Err(ResourcesExceeded::Time);
                     }
                 }
                 if let EndgameResult::Loss =
-                    self.solve_after_move(&solutions, mov, None, deadline_extended)?
+                    self.solve_after_move(&solutions, mov, None, deadline_extended, None)?
                 {
                     result = EndgameResult::Win {
                         difficulty: mov.summary.num_solutions,
@@ -258,6 +281,7 @@ impl EndgameSolver {
         mov: &EndgameMove,
         deadline_toplevel: Option<Instant>,
         deadline_extended: Instant,
+        difficulty_max: Option<u32>,
     ) -> Result<EndgameResult, ResourcesExceeded> {
         if mov.summary.num_solutions == 1 {
             return Ok(EndgameResult::Loss);
@@ -279,7 +303,12 @@ impl EndgameSolver {
         );
         assert_eq!(new_solutions.len(), mov.summary.num_solutions);
         assert_eq!(new_solutions.hash(), mov.summary.hash);
-        self.solve_recursive(&new_solutions, deadline_toplevel, deadline_extended)
+        self.solve_recursive(
+            &new_solutions,
+            deadline_toplevel,
+            deadline_extended,
+            difficulty_max,
+        )
     }
 
     fn check_quick_win_root(

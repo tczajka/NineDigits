@@ -56,6 +56,9 @@ fn opening_length(rng: &mut RandomGenerator, max_solutions: u32) -> u8 {
             Err(ResourcesExceeded::Memory) => {
                 // Continue opening.
             }
+            Err(ResourcesExceeded::Difficulty(_)) => {
+                unreachable!();
+            }
         }
         let moves = midgame::generate_moves(&mut board, &solutions);
         result = 81 - board.empty_squares().size();

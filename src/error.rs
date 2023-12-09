@@ -18,6 +18,7 @@ impl Error for InvalidInput {}
 pub enum ResourcesExceeded {
     Time,
     Memory,
+    Difficulty(u32),
 }
 
 impl Display for ResourcesExceeded {
@@ -25,6 +26,9 @@ impl Display for ResourcesExceeded {
         match self {
             ResourcesExceeded::Time => write!(f, "time exceeded"),
             ResourcesExceeded::Memory => write!(f, "memory exceeded"),
+            ResourcesExceeded::Difficulty(difficulty) => {
+                write!(f, "difficulty too high {difficulty}")
+            }
         }
     }
 }

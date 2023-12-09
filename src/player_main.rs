@@ -98,6 +98,7 @@ impl PlayerMain {
                     &solutions,
                     Some(defense_deadline),
                     defense_deadline_extended,
+                    settings::MIDGAME_DEFENSE_DIFFICULTY_MAX,
                 ) {
                     Ok(EndgameResult::Loss) => {
                         self.solutions = solutions;

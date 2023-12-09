@@ -27,5 +27,5 @@ pub const MIDGAME_DEFENSE_DIFFICULTY_MAX: Option<u32> = Some(5000);
 // Endgame.
 pub const ENDGAME_CHECK_TIME_NODES: u64 = 1024;
 pub const TRANSPOSITION_TABLE_MEMORY: usize = 512 << 20;
-pub const ENDGAME_OFFENSE_DIFFICULTY_MAX: Option<u32> = Some(10000);
+pub const ENDGAME_OFFENSE_DIFFICULTY_MAX: Option<u32> = Some(11000);
 pub const ENDGAME_DEFENSE_DIFFICULTY_MAX: Option<u32> = Some(7000);

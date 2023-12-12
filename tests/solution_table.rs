@@ -56,12 +56,12 @@ fn test_move_summaries() {
 
     let move_summaries = solution_table.move_summaries();
     assert_eq!(move_summaries.len(), 3);
-    assert_eq!(move_summaries[0][0].num_solutions, 1);
-    assert_eq!(move_summaries[0][0].hash, 11);
-    assert_eq!(move_summaries[1][0].num_solutions, 1);
-    assert_eq!(move_summaries[1][0].hash, 22);
-    assert_eq!(move_summaries[2][2].num_solutions, 2);
-    assert_eq!(move_summaries[2][2].hash, 11 ^ 22);
+    assert_eq!(move_summaries[0].num_solutions[0], 1);
+    assert_eq!(move_summaries[0].hash[0], 11);
+    assert_eq!(move_summaries[1].num_solutions[0], 1);
+    assert_eq!(move_summaries[1].hash[0], 22);
+    assert_eq!(move_summaries[2].num_solutions[2], 2);
+    assert_eq!(move_summaries[2].hash[2], 11 ^ 22);
 }
 
 #[test]
@@ -103,14 +103,14 @@ fn test_compress() {
         square_compressions[0].digit_map,
         ['0', '1', '0', '0', '0', '2', '0', '0', '0'].map(|c| OptionalDigit::try_from(c).unwrap())
     );
-    assert_eq!(square_compressions[0].move_summaries[0].num_solutions, 1);
-    assert_eq!(square_compressions[0].move_summaries[0].hash, 22);
-    assert_eq!(square_compressions[0].move_summaries[1].num_solutions, 2);
-    assert_eq!(square_compressions[0].move_summaries[1].hash, 11 ^ 33);
-    assert_eq!(square_compressions[1].move_summaries[0].num_solutions, 1);
-    assert_eq!(square_compressions[1].move_summaries[0].hash, 33);
-    assert_eq!(square_compressions[1].move_summaries[1].num_solutions, 1);
-    assert_eq!(square_compressions[1].move_summaries[1].hash, 22);
-    assert_eq!(square_compressions[1].move_summaries[2].num_solutions, 1);
-    assert_eq!(square_compressions[1].move_summaries[2].hash, 11);
+    assert_eq!(square_compressions[0].num_solutions[0], 1);
+    assert_eq!(square_compressions[0].hash[0], 22);
+    assert_eq!(square_compressions[0].num_solutions[1], 2);
+    assert_eq!(square_compressions[0].hash[1], 11 ^ 33);
+    assert_eq!(square_compressions[1].num_solutions[0], 1);
+    assert_eq!(square_compressions[1].hash[0], 33);
+    assert_eq!(square_compressions[1].num_solutions[1], 1);
+    assert_eq!(square_compressions[1].hash[1], 22);
+    assert_eq!(square_compressions[1].num_solutions[2], 1);
+    assert_eq!(square_compressions[1].hash[2], 11);
 }

@@ -134,22 +134,21 @@ impl SolutionTable {
         table
     }
 
-    pub fn move_summaries(&self) -> Vec<[MoveSummary; 9]> {
-        let mut summaries = vec![[MoveSummary::default(); 9]; self.num_moves_per_square.len()];
+    pub fn move_summaries(&self) -> Vec<MoveSummaryTable> {
+        let mut summaries = vec![MoveSummaryTable::default(); self.num_moves_per_square.len()];
 
         for solution in self.iter() {
             let id = solution.id();
             let digits = solution.digits();
             for (&digit, summaries_sq) in digits.iter().zip(summaries.iter_mut()) {
-                let summary = &mut summaries_sq[digit];
-                summary.num_solutions += 1;
-                summary.hash ^= id;
+                summaries_sq.num_solutions[digit] += 1;
+                summaries_sq.hash[digit] ^= id;
             }
         }
         summaries
     }
 
-    pub fn compress(&self, move_summaries: &[[MoveSummary; 9]]) -> (Self, Vec<SquareCompression>) {
+    pub fn compress(&self, move_summaries: &[MoveSummaryTable]) -> (Self, Vec<SquareCompression>) {
         assert_eq!(self.num_moves_per_square.len(), move_summaries.len());
 
         let mut square_compressions = Vec::with_capacity(self.num_moves_per_square.len());
@@ -166,16 +165,21 @@ impl SolutionTable {
             let mut square_compression = SquareCompression {
                 prev_index: square_index as u8,
                 digit_map: [OptionalDigit::NONE; 9],
-                move_summaries: [MoveSummary::default(); 9],
+                num_solutions: [0; 9],
+                hash: [0; 9],
             };
 
-            for (digit, summary) in (0..num_moves_sq).zip(move_summaries_sq.iter()) {
+            for ((digit, &num_solutions), &hash) in (0..num_moves_sq)
+                .zip(move_summaries_sq.num_solutions.iter())
+                .zip(move_summaries_sq.hash.iter())
+            {
                 let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
-                if summary.num_solutions != 0 {
+                if num_solutions != 0 {
                     let new_digit =
                         Digit::from(unsafe { Small::new_unchecked(compressed_num_moves) });
                     square_compression.digit_map[digit] = OptionalDigit::from(new_digit);
-                    square_compression.move_summaries[new_digit] = *summary;
+                    square_compression.num_solutions[new_digit] = num_solutions;
+                    square_compression.hash[new_digit] = hash;
                     compressed_num_moves += 1;
                 }
             }
@@ -227,9 +231,9 @@ impl<'a> SolutionRef<'a> {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct MoveSummary {
-    pub num_solutions: u32,
-    pub hash: u64,
+pub struct MoveSummaryTable {
+    pub num_solutions: [u32; 9],
+    pub hash: [u64; 9],
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -237,6 +241,8 @@ pub struct SquareCompression {
     pub prev_index: u8,
     // prev -> current
     pub digit_map: [OptionalDigit; 9],
-    // current move summaries
-    pub move_summaries: [MoveSummary; 9],
+    // current num_solutions
+    pub num_solutions: [u32; 9],
+    // current hashes
+    pub hash: [u64; 9],
 }

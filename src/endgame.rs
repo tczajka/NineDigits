@@ -4,7 +4,7 @@ use crate::{
     error::ResourcesExceeded,
     log, settings,
     small::Small,
-    solution_table::{MoveSummary, SolutionTable, SquareCompression},
+    solution_table::{MoveSummaryTable, SolutionTable, SquareCompression},
     transposition_table::TranspositionTable,
 };
 use std::time::{Duration, Instant};
@@ -13,7 +13,8 @@ use std::time::{Duration, Instant};
 struct EndgameMove {
     square_index: u8,
     digit: Digit,
-    summary: MoveSummary,
+    num_solutions: u32,
+    hash: u64,
 }
 
 pub struct EndgameSolver {
@@ -59,7 +60,7 @@ impl EndgameSolver {
 
         let mut moves =
             Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
-        moves.sort_by_key(|x| x.summary.num_solutions);
+        moves.sort_by_key(|x| x.num_solutions);
         let num_moves = moves.len();
 
         let offense_deadline =
@@ -78,11 +79,11 @@ impl EndgameSolver {
             }
             let mov = &moves[offense_index];
             if let Some(difficulty_max) = settings::ENDGAME_OFFENSE_DIFFICULTY_MAX {
-                if mov.summary.num_solutions > difficulty_max {
+                if mov.num_solutions > difficulty_max {
                     log::write_line!(
                         Info,
                         "endgame offense {offense_index} / {num_moves} {}",
-                        ResourcesExceeded::Difficulty(mov.summary.num_solutions)
+                        ResourcesExceeded::Difficulty(mov.num_solutions)
                     );
                     break;
                 }
@@ -93,7 +94,7 @@ impl EndgameSolver {
                     log::write_line!(
                         Info,
                         "endgame win {offense_index} / {num_moves} difficulty={}",
-                        mov.summary.num_solutions
+                        mov.num_solutions
                     );
                     self.log_stats(start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
@@ -139,7 +140,7 @@ impl EndgameSolver {
                     log::write_line!(
                         Info,
                         "endgame defense win! {defense_index} / {num_moves} difficulty = {}",
-                        mov.summary.num_solutions,
+                        mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
@@ -161,7 +162,7 @@ impl EndgameSolver {
                     log::write_line!(
                         Info,
                         "endgame defense safe: {defense_index} / {num_moves} num_solutions={} {e}",
-                        mov.summary.num_solutions,
+                        mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
@@ -242,13 +243,13 @@ impl EndgameSolver {
 
             let mut moves =
                 Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
-            moves.sort_by_key(|x| x.summary.num_solutions);
+            moves.sort_by_key(|x| x.num_solutions);
             let mut result = EndgameResult::Loss;
 
             for mov in moves.iter() {
                 if let Some(difficulty_max) = difficulty_max {
-                    if mov.summary.num_solutions > difficulty_max {
-                        Err(ResourcesExceeded::Difficulty(mov.summary.num_solutions))?;
+                    if mov.num_solutions > difficulty_max {
+                        Err(ResourcesExceeded::Difficulty(mov.num_solutions))?;
                     }
                 }
                 if let Some(deadline_toplevel) = deadline_toplevel {
@@ -260,7 +261,7 @@ impl EndgameSolver {
                     self.solve_after_move(&solutions, mov, None, deadline_extended, None)?
                 {
                     result = EndgameResult::Win {
-                        difficulty: mov.summary.num_solutions,
+                        difficulty: mov.num_solutions,
                     };
                     break;
                 }
@@ -288,26 +289,22 @@ impl EndgameSolver {
         deadline_extended: Instant,
         difficulty_max: Option<u32>,
     ) -> Result<EndgameResult, ResourcesExceeded> {
-        if mov.summary.num_solutions == 1 {
+        if mov.num_solutions == 1 {
             return Ok(EndgameResult::Loss);
         }
-        if mov.summary.num_solutions < 4 {
+        if mov.num_solutions < 4 {
             return Ok(EndgameResult::Win { difficulty: 0 });
         }
-        if let Some((result, difficulty)) = self.transposition_table.find(mov.summary.hash) {
+        if let Some((result, difficulty)) = self.transposition_table.find(mov.hash) {
             return Ok(if result {
                 EndgameResult::Win { difficulty }
             } else {
                 EndgameResult::Loss
             });
         }
-        let new_solutions = solutions.filter(
-            mov.summary.num_solutions,
-            mov.square_index.into(),
-            mov.digit,
-        );
-        assert_eq!(new_solutions.len(), mov.summary.num_solutions);
-        assert_eq!(new_solutions.hash(), mov.summary.hash);
+        let new_solutions = solutions.filter(mov.num_solutions, mov.square_index.into(), mov.digit);
+        assert_eq!(new_solutions.len(), mov.num_solutions);
+        assert_eq!(new_solutions.hash(), mov.hash);
         self.solve_recursive(
             &new_solutions,
             deadline_toplevel,
@@ -319,11 +316,11 @@ impl EndgameSolver {
     fn check_quick_win_root(
         &self,
         num_solutions: u32,
-        move_summaries: &[[MoveSummary; 9]],
+        move_summaries: &[MoveSummaryTable],
     ) -> Option<FullMove> {
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
-            for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
-                if move_summary.num_solutions == 1 {
+            for (digit, num_solutions) in Digit::all().zip(move_summaries_sq.num_solutions) {
+                if num_solutions == 1 {
                     return Some(FullMove::MoveClaimUnique(Move {
                         square: square.try_into().unwrap(),
                         digit,
@@ -334,13 +331,15 @@ impl EndgameSolver {
 
         // Enhanced transposition cutoff.
         for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
-            for (digit, move_summary) in Digit::all().zip(move_summaries_sq) {
-                if move_summary.num_solutions >= 4
-                    && move_summary.num_solutions < num_solutions
-                    && matches!(
-                        self.transposition_table.find(move_summary.hash),
-                        Some((false, _))
-                    )
+            for ((&move_num_solutions, &hash), digit) in move_summaries_sq
+                .num_solutions
+                .iter()
+                .zip(move_summaries_sq.hash.iter())
+                .zip(Digit::all())
+            {
+                if move_num_solutions >= 4
+                    && move_num_solutions < num_solutions
+                    && matches!(self.transposition_table.find(hash), Some((false, _)))
                 {
                     return Some(FullMove::Move(Move {
                         square: square.try_into().unwrap(),
@@ -357,14 +356,14 @@ impl EndgameSolver {
         &self,
         num_moves_per_square: &[u8],
         num_solutions: u32,
-        move_summaries: &[[MoveSummary; 9]],
+        move_summaries: &[MoveSummaryTable],
     ) -> EndgameResult {
         assert_eq!(num_moves_per_square.len(), move_summaries.len());
         for (&num_moves, move_summaries_sq) in
             num_moves_per_square.iter().zip(move_summaries.iter())
         {
-            for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
-                if move_summary.num_solutions == 1 {
+            for &num_solutions in &move_summaries_sq.num_solutions[..usize::from(num_moves)] {
+                if num_solutions == 1 {
                     return EndgameResult::Win { difficulty: 1 };
                 }
             }
@@ -374,16 +373,17 @@ impl EndgameSolver {
         for (&num_moves, move_summaries_sq) in
             num_moves_per_square.iter().zip(move_summaries.iter())
         {
-            for move_summary in &move_summaries_sq[..usize::from(num_moves)] {
-                if move_summary.num_solutions >= 4
-                    && move_summary.num_solutions < num_solutions
-                    && matches!(
-                        self.transposition_table.find(move_summary.hash),
-                        Some((false, _))
-                    )
+            for (&move_num_solutions, &hash) in move_summaries_sq.num_solutions
+                [..usize::from(num_moves)]
+                .iter()
+                .zip(move_summaries_sq.hash[..usize::from(num_moves)].iter())
+            {
+                if move_num_solutions >= 4
+                    && move_num_solutions < num_solutions
+                    && matches!(self.transposition_table.find(hash), Some((false, _)))
                 {
                     return EndgameResult::Win {
-                        difficulty: move_summary.num_solutions,
+                        difficulty: move_num_solutions,
                     };
                 }
             }
@@ -416,14 +416,16 @@ impl EndgameSolver {
             .zip(square_compressions.iter())
             .zip(0..)
         {
-            for (digit, &move_summary) in
-                (0..num_moves_sq).zip(square_compression.move_summaries.iter())
+            for ((digit, &num_solutions), &hash) in (0..num_moves_sq)
+                .zip(square_compression.num_solutions.iter())
+                .zip(square_compression.hash.iter())
             {
                 moves.push(EndgameMove {
                     square_index,
                     // Safety: `digit < 9` because `num_moves_sq <= 9`.
                     digit: unsafe { Small::new_unchecked(digit) }.into(),
-                    summary: move_summary,
+                    num_solutions,
+                    hash,
                 });
             }
         }

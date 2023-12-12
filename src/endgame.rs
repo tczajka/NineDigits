@@ -147,9 +147,6 @@ impl EndgameSolver {
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     // Panic. Reset time for next defensive move.
-                    if defense_index == 0 {
-                        log::write_line!(Info, "PANIC");
-                    }
                     if difficulty > best_losing_move_difficulty {
                         best_losing_move_index = defense_index;
                         best_losing_move_difficulty = difficulty;

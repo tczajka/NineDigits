@@ -1,5 +1,7 @@
 use sudoku_game::{
+    board::Move,
     digit::{Digit, OptionalDigit},
+    small::Small,
     solution_table::SolutionTable,
 };
 
@@ -34,7 +36,13 @@ fn test_solution_table_filter() {
     solution_table.append(11, &['1', '2', '2'].map(|c| Digit::try_from(c).unwrap()));
     solution_table.append(22, &['2', '1', '1'].map(|c| Digit::try_from(c).unwrap()));
 
-    let solution_table = solution_table.filter(2, 1, Digit::try_from('1').unwrap());
+    let solution_table = solution_table.filter(
+        2,
+        Move {
+            square: Small::new(1),
+            digit: Digit::try_from('1').unwrap(),
+        },
+    );
 
     let mut iter = solution_table.iter();
 
@@ -98,7 +106,7 @@ fn test_compress() {
     assert!(iter.next().is_none());
 
     assert_eq!(square_compressions.len(), 2);
-    assert_eq!(square_compressions[0].prev_index, 0);
+    assert_eq!(square_compressions[0].prev_square, Small::new(0));
     assert_eq!(
         square_compressions[0].digit_map,
         ['0', '1', '0', '0', '0', '2', '0', '0', '0'].map(|c| OptionalDigit::try_from(c).unwrap())

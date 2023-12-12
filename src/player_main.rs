@@ -146,9 +146,7 @@ impl Player for PlayerMain {
         match self.board.make_move(mov) {
             Ok(()) => {
                 if self.all_solutions_generated {
-                    self.solutions =
-                        self.solutions
-                            .filter(self.solutions.len(), mov.square.into(), mov.digit);
+                    self.solutions = self.solutions.filter(self.solutions.len(), mov);
                     log::write_line!(Info, "opp move solutions: {}", self.solutions.len());
                 } else {
                     self.solutions = SolutionTable::empty();
@@ -208,9 +206,7 @@ impl Player for PlayerMain {
                     .choose_move_best_effort(&self.solutions, start_time, time_left);
             if let Some(mov) = mov.to_move() {
                 self.board.make_move(mov).unwrap();
-                self.solutions =
-                    self.solutions
-                        .filter(self.solutions.len(), mov.square.into(), mov.digit);
+                self.solutions = self.solutions.filter(self.solutions.len(), mov);
             }
             mov
         } else {

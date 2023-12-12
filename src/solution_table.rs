@@ -1,5 +1,5 @@
 use crate::{
-    board::Board,
+    board::{Board, Move},
     digit::{Digit, OptionalDigit},
     error::ResourcesExceeded,
     fast_solver::FastSolver,
@@ -124,10 +124,12 @@ impl SolutionTable {
         }
     }
 
-    pub fn filter(&self, capacity: u32, square: usize, digit: Digit) -> Self {
+    pub fn filter(&self, capacity: u32, mov: Move) -> Self {
         let mut table = Self::with_capacity(self.num_moves_per_square.clone(), capacity);
         for solution in self.iter() {
-            if solution.digits()[square] == digit {
+            let digits = solution.digits();
+            let digit = *unsafe { digits.get_unchecked(usize::from(mov.square)) };
+            if digit == mov.digit {
                 table.append_from(solution);
             }
         }
@@ -155,15 +157,15 @@ impl SolutionTable {
         let mut compressed_num_moves_per_square =
             Vec::with_capacity(self.num_moves_per_square.len());
 
-        for (square_index, (&num_moves_sq, move_summaries_sq)) in self
+        for ((&num_moves_sq, move_summaries_sq), square) in self
             .num_moves_per_square
             .iter()
             .zip(move_summaries.iter())
-            .enumerate()
+            .zip(0..)
         {
             let mut compressed_num_moves = 0;
             let mut square_compression = SquareCompression {
-                prev_index: square_index as u8,
+                prev_square: unsafe { Small::new_unchecked(square) },
                 digit_map: [OptionalDigit::NONE; 9],
                 num_solutions: [0; 9],
                 hash: [0; 9],
@@ -198,7 +200,7 @@ impl SolutionTable {
             {
                 // Safety: prev_index is valid.
                 let prev_digit = *unsafe {
-                    prev_digits.get_unchecked(usize::from(square_compression.prev_index))
+                    prev_digits.get_unchecked(usize::from(square_compression.prev_square))
                 };
                 let opt_digit = square_compression.digit_map[prev_digit].to_digit();
                 // Safety: digit_map contains prev_digit.
@@ -220,11 +222,12 @@ pub struct SolutionRef<'a>(&'a [u8]);
 
 impl<'a> SolutionRef<'a> {
     pub fn id(self) -> u64 {
-        u64::from_le_bytes(self.0[..SolutionTable::ID_BYTES].try_into().unwrap())
+        let res = unsafe { self.0.get_unchecked(..SolutionTable::ID_BYTES) };
+        u64::from_le_bytes(res.try_into().unwrap())
     }
 
     pub fn digits(self) -> &'a [Digit] {
-        let bytes = &self.0[SolutionTable::ID_BYTES..];
+        let bytes = unsafe { self.0.get_unchecked(SolutionTable::ID_BYTES..) };
         // Safety: The solution is always valid digits, Digits is repr(u8).
         unsafe { slice::from_raw_parts::<'a, Digit>(bytes.as_ptr() as *const _, bytes.len()) }
     }
@@ -238,7 +241,7 @@ pub struct MoveSummaryTable {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SquareCompression {
-    pub prev_index: u8,
+    pub prev_square: Small<81>,
     // prev -> current
     pub digit_map: [OptionalDigit; 9],
     // current num_solutions

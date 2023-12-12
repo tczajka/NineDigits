@@ -11,8 +11,7 @@ use std::time::{Duration, Instant};
 
 #[derive(Copy, Clone, Debug)]
 struct EndgameMove {
-    square_index: u8,
-    digit: Digit,
+    mov: Move,
     num_solutions: u32,
     hash: u64,
 }
@@ -299,7 +298,7 @@ impl EndgameSolver {
                 EndgameResult::Loss
             });
         }
-        let new_solutions = solutions.filter(mov.num_solutions, mov.square_index.into(), mov.digit);
+        let new_solutions = solutions.filter(mov.num_solutions, mov.mov);
         assert_eq!(new_solutions.len(), mov.num_solutions);
         assert_eq!(new_solutions.hash(), mov.hash);
         self.solve_recursive(
@@ -389,11 +388,11 @@ impl EndgameSolver {
     }
 
     fn uncompress_root_move(mov: &EndgameMove, square_compressions: &[SquareCompression]) -> Move {
-        let square_compression = &square_compressions[usize::from(mov.square_index)];
+        let square_compression = &square_compressions[usize::from(mov.mov.square)];
         for (digit, &compressed_digit) in Digit::all().zip(square_compression.digit_map.iter()) {
-            if compressed_digit == OptionalDigit::from(mov.digit) {
+            if compressed_digit == OptionalDigit::from(mov.mov.digit) {
                 return Move {
-                    square: square_compression.prev_index.try_into().unwrap(),
+                    square: square_compression.prev_square,
                     digit,
                 };
             }
@@ -408,7 +407,7 @@ impl EndgameSolver {
         assert_eq!(num_moves_per_square.len(), square_compressions.len());
         let mut moves = Vec::with_capacity(num_moves_per_square.iter().map(|&x| x as usize).sum());
 
-        for ((&num_moves_sq, square_compression), square_index) in num_moves_per_square
+        for ((&num_moves_sq, square_compression), square) in num_moves_per_square
             .iter()
             .zip(square_compressions.iter())
             .zip(0..)
@@ -418,9 +417,11 @@ impl EndgameSolver {
                 .zip(square_compression.hash.iter())
             {
                 moves.push(EndgameMove {
-                    square_index,
-                    // Safety: `digit < 9` because `num_moves_sq <= 9`.
-                    digit: unsafe { Small::new_unchecked(digit) }.into(),
+                    mov: Move {
+                        square: unsafe { Small::new_unchecked(square) },
+                        // Safety: `digit < 9` because `num_moves_sq <= 9`.
+                        digit: unsafe { Small::new_unchecked(digit) }.into(),
+                    },
                     num_solutions,
                     hash,
                 });

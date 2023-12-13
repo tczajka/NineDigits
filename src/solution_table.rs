@@ -137,17 +137,17 @@ impl SolutionTable {
     }
 
     pub fn move_tables(&self) -> Vec<SquareMoveTable> {
-        let mut summaries = vec![SquareMoveTable::default(); self.num_moves_per_square.len()];
+        let mut move_tables = vec![SquareMoveTable::default(); self.num_moves_per_square.len()];
 
         for solution in self.iter() {
             let id = solution.id();
             let digits = solution.digits();
-            for (&digit, summaries_sq) in digits.iter().zip(summaries.iter_mut()) {
-                summaries_sq.num_solutions[digit] += 1;
-                summaries_sq.hash[digit] ^= id;
+            for (&digit, move_table) in digits.iter().zip(move_tables.iter_mut()) {
+                move_table.num_solutions[digit] += 1;
+                move_table.hash[digit] ^= id;
             }
         }
-        summaries
+        move_tables
     }
 
     pub fn compress(&self, move_tables: &[SquareMoveTable]) -> (Self, Vec<SquareCompression>) {

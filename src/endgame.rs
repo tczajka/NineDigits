@@ -48,9 +48,7 @@ impl EndgameSolver {
         }
 
         let (solutions, square_compressions) = solutions.compress(&move_tables);
-
-        let mut moves =
-            SolutionTable::generate_moves(solutions.num_moves_per_square(), &square_compressions);
+        let mut moves = solutions.generate_moves(&square_compressions);
         moves.sort_by_key(|x| x.num_solutions);
         let num_moves = moves.len();
 
@@ -88,10 +86,7 @@ impl EndgameSolver {
                         mov.num_solutions
                     );
                     self.log_stats(start_time, Instant::now());
-                    return FullMove::Move(SolutionTable::uncompress_move(
-                        mov.mov,
-                        &square_compressions,
-                    ));
+                    return FullMove::Move(solutions.uncompress_move(mov.mov));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     if difficulty > best_losing_move_difficulty {
@@ -137,10 +132,7 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(SolutionTable::uncompress_move(
-                        mov.mov,
-                        &square_compressions,
-                    ));
+                    return FullMove::Move(solutions.uncompress_move(mov.mov));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     // Panic. Reset time for next defensive move.
@@ -159,10 +151,7 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(SolutionTable::uncompress_move(
-                        mov.mov,
-                        &square_compressions,
-                    ));
+                    return FullMove::Move(solutions.uncompress_move(mov.mov));
                 }
             }
         }
@@ -172,10 +161,7 @@ impl EndgameSolver {
             "endgame lost difficulty {best_losing_move_difficulty}"
         );
         self.log_stats(defense_start_time, Instant::now());
-        FullMove::Move(SolutionTable::uncompress_move(
-            moves[best_losing_move_index].mov,
-            &square_compressions,
-        ))
+        FullMove::Move(solutions.uncompress_move(moves[best_losing_move_index].mov))
     }
 
     pub fn solve(
@@ -229,19 +215,13 @@ impl EndgameSolver {
         }
 
         let move_tables = solutions.move_tables();
-        let result = if let EndgameResult::Win { difficulty } = self.check_quick_win(
-            solutions.num_moves_per_square(),
-            solutions.len(),
-            &move_tables,
-        ) {
+        let result = if let EndgameResult::Win { difficulty } =
+            self.check_quick_win(solutions, &move_tables)
+        {
             EndgameResult::Win { difficulty }
         } else {
             let (solutions, square_compressions) = solutions.compress(&move_tables);
-
-            let mut moves = SolutionTable::generate_moves(
-                solutions.num_moves_per_square(),
-                &square_compressions,
-            );
+            let mut moves = solutions.generate_moves(&square_compressions);
             moves.sort_by_key(|x| x.num_solutions);
             let mut result = EndgameResult::Loss;
 
@@ -353,13 +333,14 @@ impl EndgameSolver {
 
     fn check_quick_win(
         &self,
-        num_moves_per_square: &[u8],
-        num_solutions: u32,
+        solutions: &SolutionTable,
         move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
-        assert_eq!(num_moves_per_square.len(), move_tables.len());
-        for (&num_moves, move_table) in num_moves_per_square.iter().zip(move_tables.iter()) {
-            for &num_solutions in &move_table.num_solutions[..usize::from(num_moves)] {
+        assert_eq!(move_tables.len(), usize::from(solutions.num_squares()));
+        for (square, move_table) in (0..solutions.num_squares()).zip(move_tables.iter()) {
+            for &num_solutions in
+                &move_table.num_solutions[..usize::from(solutions.num_moves(square))]
+            {
                 if num_solutions == 1 {
                     return EndgameResult::Win { difficulty: 1 };
                 }
@@ -367,17 +348,18 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for (&num_moves, move_table) in num_moves_per_square.iter().zip(move_tables.iter()) {
-            for (&move_num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
+        for (square, move_table) in (0..solutions.num_squares()).zip(move_tables.iter()) {
+            let num_moves = solutions.num_moves(square);
+            for (&num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
                 .iter()
                 .zip(move_table.hash[..usize::from(num_moves)].iter())
             {
-                if move_num_solutions >= 4
-                    && move_num_solutions < num_solutions
+                if num_solutions >= 4
+                    && num_solutions < solutions.len()
                     && matches!(self.transposition_table.find(hash), Some((false, _)))
                 {
                     return EndgameResult::Win {
-                        difficulty: move_num_solutions,
+                        difficulty: num_solutions,
                     };
                 }
             }

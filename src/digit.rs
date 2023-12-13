@@ -9,7 +9,7 @@ use std::{
 pub struct Digit(Small<9>);
 
 impl Digit {
-    pub fn all() -> impl Iterator<Item = Self> {
+    pub fn all() -> impl ExactSizeIterator<Item = Self> {
         Small::all().map(Self)
     }
 }

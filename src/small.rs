@@ -37,7 +37,7 @@ impl<const L: usize> Small<L> {
     }
 
     /// Iterate all.
-    pub fn all() -> impl Iterator<Item = Self> {
+    pub fn all() -> impl ExactSizeIterator<Item = Self> {
         assert!(L <= 256);
         // Safety: `i` is in range 0..L.
         (0..L).map(|i| unsafe { Self::new_unchecked(i as u8) })

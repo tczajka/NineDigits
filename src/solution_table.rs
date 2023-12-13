@@ -215,6 +215,49 @@ impl SolutionTable {
     fn solution_len(&self) -> usize {
         Self::ID_BYTES + self.num_moves_per_square.len()
     }
+
+    pub fn generate_moves(
+        num_moves_per_square: &[u8],
+        square_compressions: &[SquareCompression],
+    ) -> Vec<EndgameMove> {
+        assert_eq!(num_moves_per_square.len(), square_compressions.len());
+        let mut moves = Vec::with_capacity(num_moves_per_square.iter().map(|&x| x as usize).sum());
+
+        for ((&num_moves_sq, square_compression), square) in num_moves_per_square
+            .iter()
+            .zip(square_compressions.iter())
+            .zip(0..)
+        {
+            for ((digit, &num_solutions), &hash) in (0..num_moves_sq)
+                .zip(square_compression.num_solutions.iter())
+                .zip(square_compression.hash.iter())
+            {
+                moves.push(EndgameMove {
+                    mov: Move {
+                        square: unsafe { Small::new_unchecked(square) },
+                        // Safety: `digit < 9` because `num_moves_sq <= 9`.
+                        digit: unsafe { Small::new_unchecked(digit) }.into(),
+                    },
+                    num_solutions,
+                    hash,
+                });
+            }
+        }
+        moves
+    }
+
+    pub fn uncompress_move(mov: Move, square_compressions: &[SquareCompression]) -> Move {
+        let square_compression = &square_compressions[usize::from(mov.square)];
+        for (digit, &compressed_digit) in Digit::all().zip(square_compression.digit_map.iter()) {
+            if compressed_digit == OptionalDigit::from(mov.digit) {
+                return Move {
+                    square: square_compression.prev_square,
+                    digit,
+                };
+            }
+        }
+        unreachable!()
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

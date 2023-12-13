@@ -1,10 +1,9 @@
 use crate::{
     board::{FullMove, Move},
-    digit::{Digit, OptionalDigit},
+    digit::Digit,
     error::ResourcesExceeded,
     log, settings,
-    small::Small,
-    solution_table::{EndgameMove, SolutionTable, SquareCompression, SquareMoveTable},
+    solution_table::{EndgameMove, SolutionTable, SquareMoveTable},
     transposition_table::TranspositionTable,
 };
 use std::time::{Duration, Instant};
@@ -51,7 +50,7 @@ impl EndgameSolver {
         let (solutions, square_compressions) = solutions.compress(&move_tables);
 
         let mut moves =
-            Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
+            SolutionTable::generate_moves(solutions.num_moves_per_square(), &square_compressions);
         moves.sort_by_key(|x| x.num_solutions);
         let num_moves = moves.len();
 
@@ -89,7 +88,10 @@ impl EndgameSolver {
                         mov.num_solutions
                     );
                     self.log_stats(start_time, Instant::now());
-                    return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
+                    return FullMove::Move(SolutionTable::uncompress_move(
+                        mov.mov,
+                        &square_compressions,
+                    ));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     if difficulty > best_losing_move_difficulty {
@@ -135,7 +137,10 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
+                    return FullMove::Move(SolutionTable::uncompress_move(
+                        mov.mov,
+                        &square_compressions,
+                    ));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     // Panic. Reset time for next defensive move.
@@ -154,7 +159,10 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(Self::uncompress_root_move(mov, &square_compressions));
+                    return FullMove::Move(SolutionTable::uncompress_move(
+                        mov.mov,
+                        &square_compressions,
+                    ));
                 }
             }
         }
@@ -164,8 +172,8 @@ impl EndgameSolver {
             "endgame lost difficulty {best_losing_move_difficulty}"
         );
         self.log_stats(defense_start_time, Instant::now());
-        FullMove::Move(Self::uncompress_root_move(
-            &moves[best_losing_move_index],
+        FullMove::Move(SolutionTable::uncompress_move(
+            moves[best_losing_move_index].mov,
             &square_compressions,
         ))
     }
@@ -230,8 +238,10 @@ impl EndgameSolver {
         } else {
             let (solutions, square_compressions) = solutions.compress(&move_tables);
 
-            let mut moves =
-                Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
+            let mut moves = SolutionTable::generate_moves(
+                solutions.num_moves_per_square(),
+                &square_compressions,
+            );
             moves.sort_by_key(|x| x.num_solutions);
             let mut result = EndgameResult::Loss;
 
@@ -373,49 +383,6 @@ impl EndgameSolver {
             }
         }
         EndgameResult::Loss
-    }
-
-    fn uncompress_root_move(mov: &EndgameMove, square_compressions: &[SquareCompression]) -> Move {
-        let square_compression = &square_compressions[usize::from(mov.mov.square)];
-        for (digit, &compressed_digit) in Digit::all().zip(square_compression.digit_map.iter()) {
-            if compressed_digit == OptionalDigit::from(mov.mov.digit) {
-                return Move {
-                    square: square_compression.prev_square,
-                    digit,
-                };
-            }
-        }
-        unreachable!()
-    }
-
-    fn generate_moves(
-        num_moves_per_square: &[u8],
-        square_compressions: &[SquareCompression],
-    ) -> Vec<EndgameMove> {
-        assert_eq!(num_moves_per_square.len(), square_compressions.len());
-        let mut moves = Vec::with_capacity(num_moves_per_square.iter().map(|&x| x as usize).sum());
-
-        for ((&num_moves_sq, square_compression), square) in num_moves_per_square
-            .iter()
-            .zip(square_compressions.iter())
-            .zip(0..)
-        {
-            for ((digit, &num_solutions), &hash) in (0..num_moves_sq)
-                .zip(square_compression.num_solutions.iter())
-                .zip(square_compression.hash.iter())
-            {
-                moves.push(EndgameMove {
-                    mov: Move {
-                        square: unsafe { Small::new_unchecked(square) },
-                        // Safety: `digit < 9` because `num_moves_sq <= 9`.
-                        digit: unsafe { Small::new_unchecked(digit) }.into(),
-                    },
-                    num_solutions,
-                    hash,
-                });
-            }
-        }
-        moves
     }
 
     fn log_stats(&self, start_time: Instant, end_time: Instant) {

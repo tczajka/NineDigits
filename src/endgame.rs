@@ -86,7 +86,7 @@ impl EndgameSolver {
                         mov.num_solutions
                     );
                     self.log_stats(start_time, Instant::now());
-                    return FullMove::Move(solutions.uncompress_move(mov.mov));
+                    return FullMove::Move(solutions.original_move(mov.mov));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     if difficulty > best_losing_move_difficulty {
@@ -132,7 +132,7 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(solutions.uncompress_move(mov.mov));
+                    return FullMove::Move(solutions.original_move(mov.mov));
                 }
                 Ok(EndgameResult::Win { difficulty }) => {
                     // Panic. Reset time for next defensive move.
@@ -151,7 +151,7 @@ impl EndgameSolver {
                         mov.num_solutions,
                     );
                     self.log_stats(defense_start_time, Instant::now());
-                    return FullMove::Move(solutions.uncompress_move(mov.mov));
+                    return FullMove::Move(solutions.original_move(mov.mov));
                 }
             }
         }
@@ -161,7 +161,7 @@ impl EndgameSolver {
             "endgame lost difficulty {best_losing_move_difficulty}"
         );
         self.log_stats(defense_start_time, Instant::now());
-        FullMove::Move(solutions.uncompress_move(moves[best_losing_move_index].mov))
+        FullMove::Move(solutions.original_move(moves[best_losing_move_index].mov))
     }
 
     pub fn solve(

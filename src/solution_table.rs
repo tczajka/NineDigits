@@ -265,7 +265,7 @@ impl SolutionTable {
         moves
     }
 
-    pub fn uncompress_move(&self, mov: Move) -> Move {
+    pub fn original_move(&self, mov: Move) -> Move {
         let square_info = &self.square_infos[usize::from(mov.square)];
         let digit = square_info.original_digits[mov.digit];
         Move {

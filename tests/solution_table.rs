@@ -62,7 +62,7 @@ fn test_move_summaries() {
     solution_table.append(11, &['1', '2', '3'].map(|c| Digit::try_from(c).unwrap()));
     solution_table.append(22, &['2', '1', '3'].map(|c| Digit::try_from(c).unwrap()));
 
-    let move_summaries = solution_table.move_summaries();
+    let move_summaries = solution_table.move_tables();
     assert_eq!(move_summaries.len(), 3);
     assert_eq!(move_summaries[0].num_solutions[0], 1);
     assert_eq!(move_summaries[0].hash[0], 11);
@@ -79,7 +79,7 @@ fn test_compress() {
     solution_table.append(22, &['2', '3', '3'].map(|c| Digit::try_from(c).unwrap()));
     solution_table.append(33, &['6', '3', '2'].map(|c| Digit::try_from(c).unwrap()));
 
-    let move_summaries = solution_table.move_summaries();
+    let move_summaries = solution_table.move_tables();
     let (solution_table, square_compressions) = solution_table.compress(&move_summaries);
 
     assert_eq!(solution_table.num_moves_per_square(), [2, 3]);

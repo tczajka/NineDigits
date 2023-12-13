@@ -136,8 +136,8 @@ impl SolutionTable {
         table
     }
 
-    pub fn move_summaries(&self) -> Vec<MoveSummaryTable> {
-        let mut summaries = vec![MoveSummaryTable::default(); self.num_moves_per_square.len()];
+    pub fn move_tables(&self) -> Vec<SquareMoveTable> {
+        let mut summaries = vec![SquareMoveTable::default(); self.num_moves_per_square.len()];
 
         for solution in self.iter() {
             let id = solution.id();
@@ -150,17 +150,17 @@ impl SolutionTable {
         summaries
     }
 
-    pub fn compress(&self, move_summaries: &[MoveSummaryTable]) -> (Self, Vec<SquareCompression>) {
-        assert_eq!(self.num_moves_per_square.len(), move_summaries.len());
+    pub fn compress(&self, move_tables: &[SquareMoveTable]) -> (Self, Vec<SquareCompression>) {
+        assert_eq!(self.num_moves_per_square.len(), move_tables.len());
 
         let mut square_compressions = Vec::with_capacity(self.num_moves_per_square.len());
         let mut compressed_num_moves_per_square =
             Vec::with_capacity(self.num_moves_per_square.len());
 
-        for ((&num_moves_sq, move_summaries_sq), square) in self
+        for ((&num_moves_sq, move_table), square) in self
             .num_moves_per_square
             .iter()
-            .zip(move_summaries.iter())
+            .zip(move_tables.iter())
             .zip(0..)
         {
             let mut compressed_num_moves = 0;
@@ -172,8 +172,8 @@ impl SolutionTable {
             };
 
             for ((digit, &num_solutions), &hash) in (0..num_moves_sq)
-                .zip(move_summaries_sq.num_solutions.iter())
-                .zip(move_summaries_sq.hash.iter())
+                .zip(move_table.num_solutions.iter())
+                .zip(move_table.hash.iter())
             {
                 let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
                 if num_solutions != 0 {
@@ -234,7 +234,7 @@ impl<'a> SolutionRef<'a> {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct MoveSummaryTable {
+pub struct SquareMoveTable {
     pub num_solutions: [u32; 9],
     pub hash: [u64; 9],
 }
@@ -248,4 +248,11 @@ pub struct SquareCompression {
     pub num_solutions: [u32; 9],
     // current hashes
     pub hash: [u64; 9],
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct EndgameMove {
+    pub mov: Move,
+    pub num_solutions: u32,
+    pub hash: u64,
 }

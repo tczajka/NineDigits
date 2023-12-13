@@ -4,17 +4,10 @@ use crate::{
     error::ResourcesExceeded,
     log, settings,
     small::Small,
-    solution_table::{MoveSummaryTable, SolutionTable, SquareCompression},
+    solution_table::{EndgameMove, SolutionTable, SquareCompression, SquareMoveTable},
     transposition_table::TranspositionTable,
 };
 use std::time::{Duration, Instant};
-
-#[derive(Copy, Clone, Debug)]
-struct EndgameMove {
-    mov: Move,
-    num_solutions: u32,
-    hash: u64,
-}
 
 pub struct EndgameSolver {
     transposition_table: TranspositionTable,
@@ -48,14 +41,14 @@ impl EndgameSolver {
             return FullMove::ClaimUnique;
         }
 
-        let move_summaries = solutions.move_summaries();
+        let move_tables = solutions.move_tables();
 
-        if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_summaries) {
+        if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_tables) {
             log::write_line!(Info, "quick win");
             return mov;
         }
 
-        let (solutions, square_compressions) = solutions.compress(&move_summaries);
+        let (solutions, square_compressions) = solutions.compress(&move_tables);
 
         let mut moves =
             Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
@@ -227,15 +220,15 @@ impl EndgameSolver {
             return Err(ResourcesExceeded::Time);
         }
 
-        let move_summaries = solutions.move_summaries();
+        let move_tables = solutions.move_tables();
         let result = if let EndgameResult::Win { difficulty } = self.check_quick_win(
             solutions.num_moves_per_square(),
             solutions.len(),
-            &move_summaries,
+            &move_tables,
         ) {
             EndgameResult::Win { difficulty }
         } else {
-            let (solutions, square_compressions) = solutions.compress(&move_summaries);
+            let (solutions, square_compressions) = solutions.compress(&move_tables);
 
             let mut moves =
                 Self::generate_moves(solutions.num_moves_per_square(), &square_compressions);
@@ -312,10 +305,10 @@ impl EndgameSolver {
     fn check_quick_win_root(
         &self,
         num_solutions: u32,
-        move_summaries: &[MoveSummaryTable],
+        move_tables: &[SquareMoveTable],
     ) -> Option<FullMove> {
-        for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
-            for (digit, num_solutions) in Digit::all().zip(move_summaries_sq.num_solutions) {
+        for (square, move_table) in move_tables.iter().enumerate() {
+            for (digit, num_solutions) in Digit::all().zip(move_table.num_solutions) {
                 if num_solutions == 1 {
                     return Some(FullMove::MoveClaimUnique(Move {
                         square: square.try_into().unwrap(),
@@ -326,11 +319,11 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for (square, move_summaries_sq) in move_summaries.iter().enumerate() {
-            for ((&move_num_solutions, &hash), digit) in move_summaries_sq
+        for (square, move_table) in move_tables.iter().enumerate() {
+            for ((&move_num_solutions, &hash), digit) in move_table
                 .num_solutions
                 .iter()
-                .zip(move_summaries_sq.hash.iter())
+                .zip(move_table.hash.iter())
                 .zip(Digit::all())
             {
                 if move_num_solutions >= 4
@@ -352,13 +345,11 @@ impl EndgameSolver {
         &self,
         num_moves_per_square: &[u8],
         num_solutions: u32,
-        move_summaries: &[MoveSummaryTable],
+        move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
-        assert_eq!(num_moves_per_square.len(), move_summaries.len());
-        for (&num_moves, move_summaries_sq) in
-            num_moves_per_square.iter().zip(move_summaries.iter())
-        {
-            for &num_solutions in &move_summaries_sq.num_solutions[..usize::from(num_moves)] {
+        assert_eq!(num_moves_per_square.len(), move_tables.len());
+        for (&num_moves, move_table) in num_moves_per_square.iter().zip(move_tables.iter()) {
+            for &num_solutions in &move_table.num_solutions[..usize::from(num_moves)] {
                 if num_solutions == 1 {
                     return EndgameResult::Win { difficulty: 1 };
                 }
@@ -366,13 +357,10 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for (&num_moves, move_summaries_sq) in
-            num_moves_per_square.iter().zip(move_summaries.iter())
-        {
-            for (&move_num_solutions, &hash) in move_summaries_sq.num_solutions
-                [..usize::from(num_moves)]
+        for (&num_moves, move_table) in num_moves_per_square.iter().zip(move_tables.iter()) {
+            for (&move_num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
                 .iter()
-                .zip(move_summaries_sq.hash[..usize::from(num_moves)].iter())
+                .zip(move_table.hash[..usize::from(num_moves)].iter())
             {
                 if move_num_solutions >= 4
                     && move_num_solutions < num_solutions

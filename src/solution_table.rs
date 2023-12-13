@@ -58,7 +58,7 @@ impl SolutionTable {
         self.square_infos.len() as u8
     }
 
-    pub fn num_moves(&self, square: u8) -> u8 {
+    pub fn num_moves(&self, square: Small<81>) -> u8 {
         self.square_infos[usize::from(square)].num_moves
     }
 

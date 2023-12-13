@@ -3,6 +3,7 @@ use crate::{
     digit::Digit,
     error::ResourcesExceeded,
     log, settings,
+    small::Small,
     solution_table::{EndgameMove, SolutionTable, SquareMoveTable},
     transposition_table::TranspositionTable,
 };
@@ -297,19 +298,16 @@ impl EndgameSolver {
         num_solutions: u32,
         move_tables: &[SquareMoveTable],
     ) -> Option<FullMove> {
-        for (square, move_table) in move_tables.iter().enumerate() {
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
             for (digit, num_solutions) in Digit::all().zip(move_table.num_solutions) {
                 if num_solutions == 1 {
-                    return Some(FullMove::MoveClaimUnique(Move {
-                        square: square.try_into().unwrap(),
-                        digit,
-                    }));
+                    return Some(FullMove::MoveClaimUnique(Move { square, digit }));
                 }
             }
         }
 
         // Enhanced transposition cutoff.
-        for (square, move_table) in move_tables.iter().enumerate() {
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
             for ((&move_num_solutions, &hash), digit) in move_table
                 .num_solutions
                 .iter()
@@ -320,10 +318,7 @@ impl EndgameSolver {
                     && move_num_solutions < num_solutions
                     && matches!(self.transposition_table.find(hash), Some((false, _)))
                 {
-                    return Some(FullMove::Move(Move {
-                        square: square.try_into().unwrap(),
-                        digit,
-                    }));
+                    return Some(FullMove::Move(Move { square, digit }));
                 }
             }
         }
@@ -337,7 +332,7 @@ impl EndgameSolver {
         move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
         assert_eq!(move_tables.len(), usize::from(solutions.num_squares()));
-        for (square, move_table) in (0..solutions.num_squares()).zip(move_tables.iter()) {
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
             for &num_solutions in
                 &move_table.num_solutions[..usize::from(solutions.num_moves(square))]
             {
@@ -348,7 +343,7 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for (square, move_table) in (0..solutions.num_squares()).zip(move_tables.iter()) {
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
             let num_moves = solutions.num_moves(square);
             for (&num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
                 .iter()

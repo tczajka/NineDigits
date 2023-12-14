@@ -11,6 +11,7 @@ use crate::{
 use std::{slice, time::Instant};
 
 pub struct SolutionTable {
+    num_moves_per_square: Vec<u8>,
     square_infos: Vec<SquareInfo>,
     /// Each solution is: ID_BYTES + square_infos.len().
     solutions: Vec<u8>,
@@ -25,6 +26,7 @@ impl SolutionTable {
 
     pub fn empty() -> Self {
         Self {
+            num_moves_per_square: Vec::new(),
             square_infos: Vec::new(),
             solutions: Vec::new(),
             len: 0,
@@ -32,9 +34,15 @@ impl SolutionTable {
         }
     }
 
-    fn with_capacity(square_infos: Vec<SquareInfo>, max_solutions: u32) -> Self {
-        let solution_len = Self::ID_BYTES + square_infos.len();
+    fn with_capacity(
+        num_moves_per_square: Vec<u8>,
+        square_infos: Vec<SquareInfo>,
+        max_solutions: u32,
+    ) -> Self {
+        assert_eq!(num_moves_per_square.len(), square_infos.len());
+        let solution_len = Self::ID_BYTES + num_moves_per_square.len();
         Self {
+            num_moves_per_square,
             square_infos,
             solutions: Vec::with_capacity(usize::try_from(max_solutions).unwrap() * solution_len),
             len: 0,
@@ -55,11 +63,11 @@ impl SolutionTable {
     }
 
     pub fn num_squares(&self) -> u8 {
-        self.square_infos.len() as u8
+        self.num_moves_per_square.len() as u8
     }
 
-    pub fn num_moves(&self, square: Small<81>) -> u8 {
-        self.square_infos[usize::from(square)].num_moves
+    pub fn num_moves_per_square(&self) -> &[u8] {
+        &self.num_moves_per_square
     }
 
     pub fn iter(&self) -> impl Iterator<Item = SolutionRef<'_>> {
@@ -99,14 +107,14 @@ impl SolutionTable {
         for digit in Digit::all() {
             original_digits[digit] = digit.into();
         }
+        let num_moves_per_square = vec![9; 81];
         let square_infos = Small::all()
             .map(|sq| SquareInfo {
                 original_square: sq,
-                num_moves: 9,
                 original_digits,
             })
             .collect();
-        let mut table = Self::with_capacity(square_infos, max);
+        let mut table = Self::with_capacity(num_moves_per_square, square_infos, max);
         let mut solver = FastSolver::new(board);
         let mut since_last_time_check: u64 = 0;
         let mut num_solutions = 0;
@@ -139,7 +147,11 @@ impl SolutionTable {
     }
 
     pub fn filter(&self, capacity: u32, mov: Move) -> Self {
-        let mut table = Self::with_capacity(self.square_infos.clone(), capacity);
+        let mut table = Self::with_capacity(
+            self.num_moves_per_square.clone(),
+            self.square_infos.clone(),
+            capacity,
+        );
         for solution in self.iter() {
             let digits = solution.digits();
             let digit = *unsafe { digits.get_unchecked(usize::from(mov.square)) };
@@ -169,11 +181,17 @@ impl SolutionTable {
 
         let total_solutions = self.len();
         let mut square_compressions = Vec::with_capacity(self.num_squares().into());
+        let mut compressed_num_moves_per_square = Vec::with_capacity(self.num_squares().into());
         let mut compressed_square_infos = Vec::with_capacity(self.num_squares().into());
 
-        for ((square_info, move_table), square) in
-            self.square_infos.iter().zip(move_tables.iter()).zip(0..)
+        for (((&num_moves, square_info), move_table), square) in self
+            .num_moves_per_square
+            .iter()
+            .zip(self.square_infos.iter())
+            .zip(move_tables.iter())
+            .zip(0..)
         {
+            let mut compressed_num_moves = 0;
             let mut square_compression = SquareCompression {
                 prev_square: unsafe { Small::new_unchecked(square) },
                 digit_map: [OptionalDigit::NONE; 9],
@@ -182,32 +200,36 @@ impl SolutionTable {
             };
             let mut new_square_info = SquareInfo {
                 original_square: square_info.original_square,
-                num_moves: 0,
                 original_digits: [OptionalDigit::NONE; 9],
             };
 
-            for ((digit, &num_solutions), &hash) in (0..square_info.num_moves)
+            for ((digit, &num_solutions), &hash) in (0..num_moves)
                 .zip(move_table.num_solutions.iter())
                 .zip(move_table.hash.iter())
             {
                 let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
                 if num_solutions != 0 && num_solutions != total_solutions {
                     let new_digit =
-                        Digit::from(unsafe { Small::new_unchecked(new_square_info.num_moves) });
+                        Digit::from(unsafe { Small::new_unchecked(compressed_num_moves) });
                     square_compression.digit_map[digit] = OptionalDigit::from(new_digit);
                     square_compression.num_solutions[new_digit] = num_solutions;
                     square_compression.hash[new_digit] = hash;
                     new_square_info.original_digits[new_digit] = digit.into();
-                    new_square_info.num_moves += 1;
+                    compressed_num_moves += 1;
                 }
             }
-            if new_square_info.num_moves != 0 {
+            if compressed_num_moves != 0 {
                 square_compressions.push(square_compression);
+                compressed_num_moves_per_square.push(compressed_num_moves);
                 compressed_square_infos.push(new_square_info);
             }
         }
 
-        let mut compressed_table = Self::with_capacity(compressed_square_infos, self.len());
+        let mut compressed_table = Self::with_capacity(
+            compressed_num_moves_per_square,
+            compressed_square_infos,
+            self.len(),
+        );
         let mut compressed_digits = vec![Digit::from(Small::new(0)); square_compressions.len()];
         for solution in self.iter() {
             let prev_digits = solution.digits();
@@ -234,20 +256,16 @@ impl SolutionTable {
 
     pub fn generate_moves(&self, square_compressions: &[SquareCompression]) -> Vec<EndgameMove> {
         assert_eq!(square_compressions.len(), usize::from(self.num_squares()));
-        let mut moves = Vec::with_capacity(
-            self.square_infos
-                .iter()
-                .map(|&square_info| square_info.num_moves as usize)
-                .sum(),
-        );
+        let mut moves =
+            Vec::with_capacity(self.num_moves_per_square.iter().map(|&x| x as usize).sum());
 
-        for ((square_info, square_compression), square) in self
-            .square_infos
+        for ((&num_moves, square_compression), square) in self
+            .num_moves_per_square
             .iter()
             .zip(square_compressions.iter())
             .zip(0..)
         {
-            for ((digit, &num_solutions), &hash) in (0..square_info.num_moves)
+            for ((digit, &num_solutions), &hash) in (0..num_moves)
                 .zip(square_compression.num_solutions.iter())
                 .zip(square_compression.hash.iter())
             {
@@ -318,6 +336,5 @@ pub struct EndgameMove {
 #[derive(Copy, Clone, Debug)]
 struct SquareInfo {
     original_square: Small<81>,
-    num_moves: u8,
     original_digits: [OptionalDigit; 9],
 }

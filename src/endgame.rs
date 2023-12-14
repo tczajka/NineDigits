@@ -332,10 +332,12 @@ impl EndgameSolver {
         move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
         assert_eq!(move_tables.len(), usize::from(solutions.num_squares()));
-        for (square, move_table) in Small::all().zip(move_tables.iter()) {
-            for &num_solutions in
-                &move_table.num_solutions[..usize::from(solutions.num_moves(square))]
-            {
+        for (&num_moves, move_table) in solutions
+            .num_moves_per_square()
+            .iter()
+            .zip(move_tables.iter())
+        {
+            for &num_solutions in &move_table.num_solutions[..usize::from(num_moves)] {
                 if num_solutions == 1 {
                     return EndgameResult::Win { difficulty: 1 };
                 }
@@ -343,8 +345,11 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for (square, move_table) in Small::all().zip(move_tables.iter()) {
-            let num_moves = solutions.num_moves(square);
+        for (&num_moves, move_table) in solutions
+            .num_moves_per_square()
+            .iter()
+            .zip(move_tables.iter())
+        {
             for (&num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
                 .iter()
                 .zip(move_table.hash[..usize::from(num_moves)].iter())

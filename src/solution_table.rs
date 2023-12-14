@@ -278,6 +278,9 @@ impl SolutionTable {
             compressed_table.append(solution.id(), &compressed_digits);
         }
 
+        assert_eq!(compressed_table.len(), self.len());
+        assert_eq!(compressed_table.hash(), self.hash());
+
         (compressed_table, moves)
     }
 

@@ -1,6 +1,7 @@
 use crate::{
     board::{FullMove, Move},
     digit::Digit,
+    digit_set::DigitSet,
     error::ResourcesExceeded,
     log, settings,
     small::Small,
@@ -89,10 +90,10 @@ impl EndgameSolver {
                     return FullMove::Move(solutions.original_move(mov.mov));
                 }
                 Ok(EndgameResult::Win(None)) => {}
-                Ok(EndgameResult::Win(Some(mov))) => {
-                    if mov.num_solutions > best_losing_move_difficulty {
+                Ok(EndgameResult::Win(Some(opp_mov))) => {
+                    if opp_mov.num_solutions > best_losing_move_difficulty {
                         best_losing_move_index = offense_index;
-                        best_losing_move_difficulty = mov.num_solutions;
+                        best_losing_move_difficulty = opp_mov.num_solutions;
                     }
                 }
                 Err(e) => {
@@ -137,10 +138,10 @@ impl EndgameSolver {
                 }
                 Ok(EndgameResult::Win(maybe_move)) => {
                     // Panic. Reset time for next defensive move.
-                    if let Some(mov) = maybe_move {
-                        if mov.num_solutions > best_losing_move_difficulty {
+                    if let Some(opp_mov) = maybe_move {
+                        if opp_mov.num_solutions > best_losing_move_difficulty {
                             best_losing_move_index = defense_index;
-                            best_losing_move_difficulty = mov.num_solutions;
+                            best_losing_move_difficulty = opp_mov.num_solutions;
                         }
                     }
                     let t = Instant::now();
@@ -219,6 +220,8 @@ impl EndgameSolver {
             let (solutions, mut moves) = solutions.compress_and_gen_moves(&move_tables);
             moves.sort_by_key(|x| x.num_solutions);
 
+            let mut is_losing_move = [DigitSet::EMPTY; 81];
+
             for mov in moves.iter() {
                 if let Some(difficulty_max) = difficulty_max {
                     if mov.num_solutions > difficulty_max {
@@ -230,17 +233,29 @@ impl EndgameSolver {
                         return Err(ResourcesExceeded::Time);
                     }
                 }
-                if let EndgameResult::Loss =
-                    self.solve_after_move(&solutions, mov, None, deadline_extended, None)?
-                {
-                    result = EndgameResult::Win(Some(EndgameMove {
-                        mov: solutions.original_move(mov.mov),
-                        ..*mov
-                    }));
-                    break;
+                let orig_mov = solutions.original_move(mov.mov);
+                if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
+                    continue;
+                }
+                match self.solve_after_move(&solutions, mov, None, deadline_extended, None)? {
+                    EndgameResult::Loss => {
+                        result = EndgameResult::Win(Some(EndgameMove {
+                            mov: orig_mov,
+                            ..*mov
+                        }));
+                        break;
+                    }
+                    EndgameResult::Win(None) => {}
+                    EndgameResult::Win(Some(orig_opp_mov)) => {
+                        // mov loses to opp_mov.
+                        // Therefore by transposition opp_mov loses to mov, if mov response is allowed.
+                        // But if mov isn't allowed (by Jelmer's rule), then num_solutions after we play opp_mov is the same as after the mov, opp_mov sequence.
+                        // In the latter case setting this bit does no harm because we have already processed opp_move because it has fewer solutions.
+                        is_losing_move[orig_opp_mov.mov.square].insert(orig_opp_mov.mov.digit);
+                    }
                 }
             }
-        };
+        }
         self.transposition_table.insert(solutions.hash(), result);
         Ok(result)
     }
@@ -328,13 +343,14 @@ impl EndgameSolver {
                 .iter(),
             ) {
                 if num_solutions == 1 {
+                    let digit = unsafe { Small::new_unchecked(digit) }.into();
                     return EndgameResult::Win(Some(EndgameMove {
                         mov: solutions.original_move(Move {
                             square: unsafe { Small::new_unchecked(square) },
-                            digit: unsafe { Small::new_unchecked(digit) }.into(),
+                            digit,
                         }),
                         num_solutions,
-                        hash: move_table.hash[usize::from(digit)],
+                        hash: move_table.hash[digit],
                     }));
                 }
             }
@@ -354,7 +370,7 @@ impl EndgameSolver {
                     }
                     .iter(),
                 )
-                .zip(move_table.hash[..usize::from(num_moves)].iter())
+                .zip(unsafe { move_table.hash.get_unchecked(..usize::from(num_moves)) }.iter())
             {
                 if num_solutions >= 4
                     && num_solutions < solutions.len()
@@ -363,10 +379,11 @@ impl EndgameSolver {
                         Some(EndgameResult::Loss)
                     )
                 {
+                    let digit = unsafe { Small::new_unchecked(digit) }.into();
                     return EndgameResult::Win(Some(EndgameMove {
                         mov: solutions.original_move(Move {
                             square: unsafe { Small::new_unchecked(square) },
-                            digit: unsafe { Small::new_unchecked(digit) }.into(),
+                            digit,
                         }),
                         num_solutions,
                         hash,

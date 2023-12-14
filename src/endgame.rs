@@ -359,7 +359,11 @@ impl EndgameSolver {
     ) -> EndgameResult {
         assert_eq!(num_moves_per_square.len(), move_tables.len());
         for (&num_moves, move_table) in num_moves_per_square.iter().zip(move_tables.iter()) {
-            for &num_solutions in &move_table.num_solutions[..usize::from(num_moves)] {
+            for &num_solutions in unsafe {
+                move_table
+                    .num_solutions
+                    .get_unchecked(..usize::from(num_moves))
+            } {
                 if num_solutions == 1 {
                     return EndgameResult::Win { difficulty: 1 };
                 }

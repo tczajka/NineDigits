@@ -234,24 +234,11 @@ impl EndgameSolver {
                     }
                 }
                 let orig_mov = solutions.original_move(mov.mov);
-                /*if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
+                if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
                     continue;
-                }*/
+                }
                 match self.solve_after_move(&solutions, mov, None, deadline_extended, None)? {
                     EndgameResult::Loss => {
-                        log::write_line!(
-                            Info,
-                            "winning at hash={:x} ns={} mov={orig_mov} mov_hash={:x} mov ns={}",
-                            solutions.hash(),
-                            solutions.len(),
-                            mov.hash,
-                            mov.num_solutions,
-                        );
-                        assert!(
-                            !is_losing_move[orig_mov.square].contains(orig_mov.digit),
-                            "This shouldn't be winning: hash={:x} mov={orig_mov}",
-                            solutions.hash()
-                        );
                         result = EndgameResult::Win(Some(EndgameMove {
                             mov: orig_mov,
                             ..*mov

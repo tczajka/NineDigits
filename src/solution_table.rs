@@ -187,6 +187,8 @@ impl SolutionTable {
         let mut compressed_num_moves_per_square = Vec::with_capacity(self.num_squares().into());
         let mut compressed_square_infos = Vec::with_capacity(self.num_squares().into());
 
+        let mut moves = Vec::with_capacity(usize::from(self.num_squares()) * 9);
+
         for (((&num_moves, square_info), move_table), square) in self
             .num_moves_per_square
             .iter()
@@ -194,12 +196,11 @@ impl SolutionTable {
             .zip(move_tables.iter())
             .zip(0..)
         {
+            let square = unsafe { Small::new_unchecked(square) };
             let mut compressed_num_moves = 0;
             let mut square_compression = SquareCompression {
-                prev_square: unsafe { Small::new_unchecked(square) },
+                prev_square: square,
                 digit_map: [OptionalDigit::NONE; 9],
-                num_solutions: [0; 9],
-                hash: [0; 9],
             };
             let mut new_square_info = SquareInfo {
                 original_square: square_info.original_square,
@@ -210,49 +211,31 @@ impl SolutionTable {
                 .zip(move_table.num_solutions.iter())
                 .zip(move_table.hash.iter())
             {
-                let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
                 if num_solutions != 0 && num_solutions != total_solutions {
+                    let digit = Digit::from(unsafe { Small::new_unchecked(digit) });
                     let new_digit =
                         Digit::from(unsafe { Small::new_unchecked(compressed_num_moves) });
                     square_compression.digit_map[digit] = OptionalDigit::from(new_digit);
-                    square_compression.num_solutions[new_digit] = num_solutions;
-                    square_compression.hash[new_digit] = hash;
                     new_square_info.original_digits[new_digit] = digit.into();
                     compressed_num_moves += 1;
+
+                    moves.push(EndgameMove {
+                        mov: Move {
+                            square: unsafe {
+                                Small::new_unchecked(compressed_num_moves_per_square.len() as u8)
+                            },
+                            // Safety: `digit < 9` because `num_moves_sq <= 9`.
+                            digit: new_digit,
+                        },
+                        num_solutions,
+                        hash,
+                    });
                 }
             }
             if compressed_num_moves != 0 {
                 square_compressions.push(square_compression);
                 compressed_num_moves_per_square.push(compressed_num_moves);
                 compressed_square_infos.push(new_square_info);
-            }
-        }
-
-        let mut moves = Vec::with_capacity(
-            compressed_num_moves_per_square
-                .iter()
-                .map(|&x| x as usize)
-                .sum(),
-        );
-
-        for ((&num_moves, square_compression), square) in compressed_num_moves_per_square
-            .iter()
-            .zip(square_compressions.iter())
-            .zip(0..)
-        {
-            for ((digit, &num_solutions), &hash) in (0..num_moves)
-                .zip(square_compression.num_solutions.iter())
-                .zip(square_compression.hash.iter())
-            {
-                moves.push(EndgameMove {
-                    mov: Move {
-                        square: unsafe { Small::new_unchecked(square) },
-                        // Safety: `digit < 9` because `num_moves_sq <= 9`.
-                        digit: unsafe { Small::new_unchecked(digit) }.into(),
-                    },
-                    num_solutions,
-                    hash,
-                });
             }
         }
 
@@ -325,10 +308,6 @@ struct SquareCompression {
     prev_square: Small<81>,
     // prev -> current
     digit_map: [OptionalDigit; 9],
-    // current num_solutions
-    num_solutions: [u32; 9],
-    // current hashes
-    hash: [u64; 9],
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

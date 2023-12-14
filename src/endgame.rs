@@ -234,11 +234,24 @@ impl EndgameSolver {
                     }
                 }
                 let orig_mov = solutions.original_move(mov.mov);
-                if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
+                /*if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
                     continue;
-                }
+                }*/
                 match self.solve_after_move(&solutions, mov, None, deadline_extended, None)? {
                     EndgameResult::Loss => {
+                        log::write_line!(
+                            Info,
+                            "winning at hash={:x} ns={} mov={orig_mov} mov_hash={:x} mov ns={}",
+                            solutions.hash(),
+                            solutions.len(),
+                            mov.hash,
+                            mov.num_solutions,
+                        );
+                        assert!(
+                            !is_losing_move[orig_mov.square].contains(orig_mov.digit),
+                            "This shouldn't be winning: hash={:x} mov={orig_mov}",
+                            solutions.hash()
+                        );
                         result = EndgameResult::Win(Some(EndgameMove {
                             mov: orig_mov,
                             ..*mov
@@ -277,9 +290,11 @@ impl EndgameSolver {
         if let Some(result) = self.transposition_table.find(mov.hash) {
             return Ok(result);
         }
+        assert_ne!(solutions.hash(), mov.hash);
         let new_solutions = solutions.filter(mov.num_solutions, mov.mov);
         assert_eq!(new_solutions.len(), mov.num_solutions);
         assert_eq!(new_solutions.hash(), mov.hash);
+
         self.solve_recursive(
             &new_solutions,
             deadline_toplevel,
@@ -406,6 +421,7 @@ impl EndgameSolver {
     }
 }
 
+/// Win stores the *original* move.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EndgameResult {
     Win(Option<EndgameMove>),

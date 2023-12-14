@@ -180,4 +180,8 @@ fn test_compress_and_gen_moves() {
     assert_eq!(moves[3].mov.digit, Digit::try_from('2').unwrap());
     assert_eq!(moves[3].num_solutions, 1);
     assert_eq!(moves[3].hash, 11);
+
+    let orig_move = solution_table.original_move(moves[3].mov);
+    assert_eq!(orig_move.square, Small::new(20));
+    assert_eq!(orig_move.digit, Digit::try_from('8').unwrap());
 }

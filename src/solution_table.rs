@@ -216,7 +216,7 @@ impl SolutionTable {
                     let new_digit =
                         Digit::from(unsafe { Small::new_unchecked(compressed_num_moves) });
                     square_compression.digit_map[digit] = OptionalDigit::from(new_digit);
-                    new_square_info.original_digits[new_digit] = digit.into();
+                    new_square_info.original_digits[new_digit] = square_info.original_digits[digit];
                     compressed_num_moves += 1;
 
                     moves.push(EndgameMove {

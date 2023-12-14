@@ -106,11 +106,13 @@ impl PlayerMain {
                         log::write_line!(Info, "win!");
                         return FullMove::Move(mov.mov);
                     }
-                    Ok(EndgameResult::Win { difficulty }) => {
-                        log::write_line!(Info, "midgame PANIC difficulty={difficulty}");
-                        if difficulty > best_losing_move_difficulty {
-                            best_losing_move_index = defense_index;
-                            best_losing_move_difficulty = difficulty;
+                    Ok(EndgameResult::Win(maybe_move)) => {
+                        log::write_line!(Info, "midgame PANIC");
+                        if let Some(mov) = maybe_move {
+                            if mov.num_solutions > best_losing_move_difficulty {
+                                best_losing_move_index = defense_index;
+                                best_losing_move_difficulty = mov.num_solutions;
+                            }
                         }
                         let t = Instant::now();
                         time_left =

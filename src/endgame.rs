@@ -88,10 +88,11 @@ impl EndgameSolver {
                     self.log_stats(start_time, Instant::now());
                     return FullMove::Move(solutions.original_move(mov.mov));
                 }
-                Ok(EndgameResult::Win { difficulty }) => {
-                    if difficulty > best_losing_move_difficulty {
+                Ok(EndgameResult::Win(None)) => {}
+                Ok(EndgameResult::Win(Some(mov))) => {
+                    if mov.num_solutions > best_losing_move_difficulty {
                         best_losing_move_index = offense_index;
-                        best_losing_move_difficulty = difficulty;
+                        best_losing_move_difficulty = mov.num_solutions;
                     }
                 }
                 Err(e) => {
@@ -134,11 +135,13 @@ impl EndgameSolver {
                     self.log_stats(defense_start_time, Instant::now());
                     return FullMove::Move(solutions.original_move(mov.mov));
                 }
-                Ok(EndgameResult::Win { difficulty }) => {
+                Ok(EndgameResult::Win(maybe_move)) => {
                     // Panic. Reset time for next defensive move.
-                    if difficulty > best_losing_move_difficulty {
-                        best_losing_move_index = defense_index;
-                        best_losing_move_difficulty = difficulty;
+                    if let Some(mov) = maybe_move {
+                        if mov.num_solutions > best_losing_move_difficulty {
+                            best_losing_move_index = defense_index;
+                            best_losing_move_difficulty = mov.num_solutions;
+                        }
                     }
                     let t = Instant::now();
                     time_left = time_left.saturating_sub(t.saturating_duration_since(start_time));
@@ -183,14 +186,10 @@ impl EndgameSolver {
             return Ok(EndgameResult::Loss);
         }
         if solutions.len() < 4 {
-            return Ok(EndgameResult::Win { difficulty: 0 });
+            return Ok(EndgameResult::Win(None));
         }
-        if let Some((result, difficulty)) = self.transposition_table.find(solutions.hash()) {
-            return Ok(if result {
-                EndgameResult::Win { difficulty }
-            } else {
-                EndgameResult::Loss
-            });
+        if let Some(result) = self.transposition_table.find(solutions.hash()) {
+            return Ok(result);
         }
 
         let result =
@@ -215,14 +214,10 @@ impl EndgameSolver {
         }
 
         let move_tables = solutions.move_tables();
-        let result = if let EndgameResult::Win { difficulty } =
-            self.check_quick_win(solutions, &move_tables)
-        {
-            EndgameResult::Win { difficulty }
-        } else {
+        let mut result = self.check_quick_win(solutions, &move_tables);
+        if matches!(result, EndgameResult::Loss) {
             let (solutions, mut moves) = solutions.compress_and_gen_moves(&move_tables);
             moves.sort_by_key(|x| x.num_solutions);
-            let mut result = EndgameResult::Loss;
 
             for mov in moves.iter() {
                 if let Some(difficulty_max) = difficulty_max {
@@ -238,24 +233,15 @@ impl EndgameSolver {
                 if let EndgameResult::Loss =
                     self.solve_after_move(&solutions, mov, None, deadline_extended, None)?
                 {
-                    result = EndgameResult::Win {
-                        difficulty: mov.num_solutions,
-                    };
+                    result = EndgameResult::Win(Some(EndgameMove {
+                        mov: solutions.original_move(mov.mov),
+                        ..*mov
+                    }));
                     break;
                 }
             }
-            result
         };
-        match result {
-            EndgameResult::Win { difficulty } => {
-                self.transposition_table
-                    .insert(solutions.hash(), difficulty, true);
-            }
-            EndgameResult::Loss => {
-                self.transposition_table
-                    .insert(solutions.hash(), solutions.len(), false);
-            }
-        }
+        self.transposition_table.insert(solutions.hash(), result);
         Ok(result)
     }
 
@@ -271,14 +257,10 @@ impl EndgameSolver {
             return Ok(EndgameResult::Loss);
         }
         if mov.num_solutions < 4 {
-            return Ok(EndgameResult::Win { difficulty: 0 });
+            return Ok(EndgameResult::Win(None));
         }
-        if let Some((result, difficulty)) = self.transposition_table.find(mov.hash) {
-            return Ok(if result {
-                EndgameResult::Win { difficulty }
-            } else {
-                EndgameResult::Loss
-            });
+        if let Some(result) = self.transposition_table.find(mov.hash) {
+            return Ok(result);
         }
         let new_solutions = solutions.filter(mov.num_solutions, mov.mov);
         assert_eq!(new_solutions.len(), mov.num_solutions);
@@ -314,7 +296,10 @@ impl EndgameSolver {
             {
                 if move_num_solutions >= 4
                     && move_num_solutions < num_solutions
-                    && matches!(self.transposition_table.find(hash), Some((false, _)))
+                    && matches!(
+                        self.transposition_table.find(hash),
+                        Some(EndgameResult::Loss)
+                    )
                 {
                     return Some(FullMove::Move(Move { square, digit }));
                 }
@@ -330,39 +315,62 @@ impl EndgameSolver {
         move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
         assert_eq!(move_tables.len(), usize::from(solutions.num_squares()));
-        for (&num_moves, move_table) in solutions
-            .num_moves_per_square()
-            .iter()
+        for ((square, &num_moves), move_table) in (0u8..)
+            .zip(solutions.num_moves_per_square().iter())
             .zip(move_tables.iter())
         {
-            for &num_solutions in unsafe {
-                move_table
-                    .num_solutions
-                    .get_unchecked(..usize::from(num_moves))
-            } {
+            for (digit, &num_solutions) in (0..num_moves).zip(
+                unsafe {
+                    move_table
+                        .num_solutions
+                        .get_unchecked(..usize::from(num_moves))
+                }
+                .iter(),
+            ) {
                 if num_solutions == 1 {
-                    return EndgameResult::Win { difficulty: 1 };
+                    return EndgameResult::Win(Some(EndgameMove {
+                        mov: solutions.original_move(Move {
+                            square: unsafe { Small::new_unchecked(square) },
+                            digit: unsafe { Small::new_unchecked(digit) }.into(),
+                        }),
+                        num_solutions,
+                        hash: move_table.hash[usize::from(digit)],
+                    }));
                 }
             }
         }
 
         // Enhanced transposition cutoff.
-        for (&num_moves, move_table) in solutions
-            .num_moves_per_square()
-            .iter()
+        for ((square, &num_moves), move_table) in (0u8..)
+            .zip(solutions.num_moves_per_square().iter())
             .zip(move_tables.iter())
         {
-            for (&num_solutions, &hash) in move_table.num_solutions[..usize::from(num_moves)]
-                .iter()
+            for ((digit, &num_solutions), &hash) in (0..num_moves)
+                .zip(
+                    unsafe {
+                        move_table
+                            .num_solutions
+                            .get_unchecked(..usize::from(num_moves))
+                    }
+                    .iter(),
+                )
                 .zip(move_table.hash[..usize::from(num_moves)].iter())
             {
                 if num_solutions >= 4
                     && num_solutions < solutions.len()
-                    && matches!(self.transposition_table.find(hash), Some((false, _)))
+                    && matches!(
+                        self.transposition_table.find(hash),
+                        Some(EndgameResult::Loss)
+                    )
                 {
-                    return EndgameResult::Win {
-                        difficulty: num_solutions,
-                    };
+                    return EndgameResult::Win(Some(EndgameMove {
+                        mov: solutions.original_move(Move {
+                            square: unsafe { Small::new_unchecked(square) },
+                            digit: unsafe { Small::new_unchecked(digit) }.into(),
+                        }),
+                        num_solutions,
+                        hash,
+                    }));
                 }
             }
         }
@@ -381,8 +389,8 @@ impl EndgameSolver {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EndgameResult {
-    Win { difficulty: u32 },
+    Win(Option<EndgameMove>),
     Loss,
 }

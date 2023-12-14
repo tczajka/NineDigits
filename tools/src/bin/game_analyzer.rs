@@ -141,7 +141,7 @@ fn analyze_game(
         result: if solutions.len() == 1 {
             EndgameResult::Loss
         } else {
-            EndgameResult::Win { difficulty: 0 }
+            EndgameResult::Win(None)
         },
     });
 
@@ -207,9 +207,13 @@ fn analyze_game(
         {
             if let StateAnalysis {
                 num_solutions,
-                result: EndgameResult::Win { difficulty },
+                result: EndgameResult::Win(maybe_move),
             } = state_analyses[i].unwrap()
             {
+                let difficulty = match maybe_move {
+                    None => 0,
+                    Some(mov) => mov.num_solutions,
+                };
                 println!(
                     ">>> MISTAKE at {} {mov} num_solutions: {num_solutions} difficulty: {difficulty}",
                     i + 1,

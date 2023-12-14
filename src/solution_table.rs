@@ -328,7 +328,7 @@ struct SquareCompression {
     hash: [u64; 9],
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct EndgameMove {
     pub mov: Move,
     pub num_solutions: u32,

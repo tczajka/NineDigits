@@ -34,7 +34,7 @@ impl SolutionTable {
         }
     }
 
-    fn with_capacity(
+    pub fn with_capacity(
         num_moves_per_square: Vec<u8>,
         square_infos: Vec<SquareInfo>,
         max_solutions: u32,
@@ -339,7 +339,7 @@ pub struct EndgameMove {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct SquareInfo {
-    original_square: Small<81>,
-    original_digits: [OptionalDigit; 9],
+pub struct SquareInfo {
+    pub original_square: Small<81>,
+    pub original_digits: [OptionalDigit; 9],
 }

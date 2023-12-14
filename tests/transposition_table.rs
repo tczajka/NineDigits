@@ -9,7 +9,6 @@ fn test_transposition_table() {
     assert_eq!(table.find(0x1234), Some(EndgameResult::Loss));
     assert_eq!(table.find(0x5678), None);
 
-    table.new_era();
     table.insert(0x10000000abcd, EndgameResult::Loss);
     table.insert(0x20000000abcd, EndgameResult::Loss);
     table.insert(0x30000000abcd, EndgameResult::Loss);

@@ -17,8 +17,8 @@ impl TranspositionTable {
         );
         Self {
             table: vec![Bucket::new(); num_buckets],
-            index_mask: num_buckets - 1,
             era: 1,
+            index_mask: num_buckets - 1,
         }
     }
 

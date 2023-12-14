@@ -48,8 +48,7 @@ impl EndgameSolver {
             return mov;
         }
 
-        let (solutions, square_compressions) = solutions.compress(&move_tables);
-        let mut moves = solutions.generate_moves(&square_compressions);
+        let (solutions, mut moves) = solutions.compress_and_gen_moves(&move_tables);
         moves.sort_by_key(|x| x.num_solutions);
         let num_moves = moves.len();
 
@@ -221,8 +220,7 @@ impl EndgameSolver {
         {
             EndgameResult::Win { difficulty }
         } else {
-            let (solutions, square_compressions) = solutions.compress(&move_tables);
-            let mut moves = solutions.generate_moves(&square_compressions);
+            let (solutions, mut moves) = solutions.compress_and_gen_moves(&move_tables);
             moves.sort_by_key(|x| x.num_solutions);
             let mut result = EndgameResult::Loss;
 

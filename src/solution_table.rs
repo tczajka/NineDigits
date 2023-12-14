@@ -317,6 +317,12 @@ pub struct EndgameMove {
     pub hash: u64,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct EndgameMoveNoHash {
+    pub mov: Move,
+    pub num_solutions: u32,
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct SquareInfo {
     pub original_square: Small<81>,

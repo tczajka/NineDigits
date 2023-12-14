@@ -5,7 +5,7 @@ use crate::{
     error::ResourcesExceeded,
     log, settings,
     small::Small,
-    solution_table::{EndgameMove, SolutionTable, SquareMoveTable},
+    solution_table::{EndgameMove, EndgameMoveNoHash, SolutionTable, SquareMoveTable},
     transposition_table::TranspositionTable,
 };
 use std::time::{Duration, Instant};
@@ -239,9 +239,9 @@ impl EndgameSolver {
                 }
                 match self.solve_after_move(&solutions, mov, None, deadline_extended, None)? {
                     EndgameResult::Loss => {
-                        result = EndgameResult::Win(Some(EndgameMove {
+                        result = EndgameResult::Win(Some(EndgameMoveNoHash {
                             mov: orig_mov,
-                            ..*mov
+                            num_solutions: mov.num_solutions,
                         }));
                         break;
                     }
@@ -346,13 +346,12 @@ impl EndgameSolver {
             ) {
                 if num_solutions == 1 {
                     let digit = unsafe { Small::new_unchecked(digit) }.into();
-                    return EndgameResult::Win(Some(EndgameMove {
+                    return EndgameResult::Win(Some(EndgameMoveNoHash {
                         mov: solutions.original_move(Move {
                             square: unsafe { Small::new_unchecked(square) },
                             digit,
                         }),
                         num_solutions,
-                        hash: move_table.hash[digit],
                     }));
                 }
             }
@@ -382,13 +381,12 @@ impl EndgameSolver {
                     )
                 {
                     let digit = unsafe { Small::new_unchecked(digit) }.into();
-                    return EndgameResult::Win(Some(EndgameMove {
+                    return EndgameResult::Win(Some(EndgameMoveNoHash {
                         mov: solutions.original_move(Move {
                             square: unsafe { Small::new_unchecked(square) },
                             digit,
                         }),
                         num_solutions,
-                        hash,
                     }));
                 }
             }
@@ -411,6 +409,6 @@ impl EndgameSolver {
 /// Win stores the *original* move.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum EndgameResult {
-    Win(Option<EndgameMove>),
+    Win(Option<EndgameMoveNoHash>),
     Loss,
 }

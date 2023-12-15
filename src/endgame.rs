@@ -235,6 +235,9 @@ impl EndgameSolver {
                 }
                 let orig_mov = solutions.original_move(mov.mov);
                 if is_losing_move[orig_mov.square].contains(orig_mov.digit) {
+                    // Store without move -- we don't know whether mov is the best response.
+                    self.transposition_table
+                        .insert(mov.hash, EndgameResult::Win(None));
                     continue;
                 }
                 match self.solve_after_move(&solutions, mov, None, deadline_extended, None)? {

@@ -48,9 +48,17 @@ impl TranspositionTable {
             .iter_mut()
             .min_by_key(|entry| (entry.hash != hash, entry.era == self.era))
             .unwrap();
-        best_entry.hash = hash;
-        best_entry.result = result;
-        best_entry.era = self.era;
+        if best_entry.hash == hash {
+            best_entry.era = self.era;
+            // Don't overwrite with less complete result.
+            if !matches!(result, EndgameResult::Win(None)) {
+                best_entry.result = result;
+            }
+        } else {
+            best_entry.hash = hash;
+            best_entry.result = result;
+            best_entry.era = self.era;
+        }
     }
 }
 

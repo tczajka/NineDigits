@@ -1,6 +1,5 @@
 use crate::{
     board::{FullMove, Move},
-    digit::Digit,
     digit_set::DigitSet,
     error::ResourcesExceeded,
     log, settings,
@@ -44,9 +43,13 @@ impl EndgameSolver {
 
         let move_tables = solutions.move_tables();
 
-        if let Some(mov) = self.check_quick_win_root(solutions.len(), &move_tables) {
+        if let EndgameResult::Win(Some(mov)) = self.check_quick_win(solutions, &move_tables) {
             log::write_line!(Info, "quick win");
-            return mov;
+            return if mov.num_solutions == 1 {
+                FullMove::MoveClaimUnique(mov.mov)
+            } else {
+                FullMove::Move(mov.mov)
+            };
         }
 
         let (solutions, mut moves) = solutions.compress_and_gen_moves(&move_tables);
@@ -291,42 +294,6 @@ impl EndgameSolver {
             deadline_extended,
             difficulty_max,
         )
-    }
-
-    fn check_quick_win_root(
-        &self,
-        num_solutions: u32,
-        move_tables: &[SquareMoveTable],
-    ) -> Option<FullMove> {
-        for (square, move_table) in Small::all().zip(move_tables.iter()) {
-            for (digit, num_solutions) in Digit::all().zip(move_table.num_solutions) {
-                if num_solutions == 1 {
-                    return Some(FullMove::MoveClaimUnique(Move { square, digit }));
-                }
-            }
-        }
-
-        // Enhanced transposition cutoff.
-        for (square, move_table) in Small::all().zip(move_tables.iter()) {
-            for ((&move_num_solutions, &hash), digit) in move_table
-                .num_solutions
-                .iter()
-                .zip(move_table.hash.iter())
-                .zip(Digit::all())
-            {
-                if move_num_solutions >= 4
-                    && move_num_solutions < num_solutions
-                    && matches!(
-                        self.transposition_table.find(hash),
-                        Some(EndgameResult::Loss)
-                    )
-                {
-                    return Some(FullMove::Move(Move { square, digit }));
-                }
-            }
-        }
-
-        None
     }
 
     fn check_quick_win(

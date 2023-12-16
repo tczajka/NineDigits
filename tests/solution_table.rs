@@ -1,56 +1,8 @@
-use sudoku_game::{
-    board::Move,
-    digit::{Digit, OptionalDigit},
-    small::Small,
-    solution_table::{SolutionTable, SquareInfo},
-};
+use sudoku_game::{board::Move, digit::Digit, small::Small, solution_table::SolutionTable};
 
 fn example_solution_table() -> SolutionTable {
-    let square_infos = vec![
-        SquareInfo {
-            original_square: Small::new(10),
-            original_digits: [
-                OptionalDigit::try_from('2').unwrap(),
-                OptionalDigit::try_from('4').unwrap(),
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-            ],
-        },
-        SquareInfo {
-            original_square: Small::new(20),
-            original_digits: [
-                OptionalDigit::try_from('5').unwrap(),
-                OptionalDigit::try_from('7').unwrap(),
-                OptionalDigit::try_from('8').unwrap(),
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-            ],
-        },
-        SquareInfo {
-            original_square: Small::new(30),
-            original_digits: [
-                OptionalDigit::try_from('2').unwrap(),
-                OptionalDigit::try_from('4').unwrap(),
-                OptionalDigit::try_from('6').unwrap(),
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-                OptionalDigit::NONE,
-            ],
-        },
-    ];
-    let mut solution_table = SolutionTable::with_capacity(vec![2, 3, 3], square_infos, 2);
+    let original_squares = vec![Small::new(10), Small::new(20), Small::new(30)];
+    let mut solution_table = SolutionTable::with_capacity(original_squares, 2);
     solution_table.append(11, &['1', '3', '3'].map(|c| Digit::try_from(c).unwrap()));
     solution_table.append(22, &['2', '1', '3'].map(|c| Digit::try_from(c).unwrap()));
     solution_table
@@ -61,7 +13,6 @@ fn test_solution_table_properties() {
     let solution_table = example_solution_table();
     assert_eq!(solution_table.len(), 2);
     assert_eq!(solution_table.num_squares(), 3);
-    assert_eq!(solution_table.num_moves_per_square(), [2, 3, 3]);
     assert_eq!(solution_table.hash(), 11 ^ 22);
 }
 
@@ -74,7 +25,7 @@ fn test_original_move() {
     };
     let mov = solution_table.original_move(mov);
     assert_eq!(mov.square, Small::new(20));
-    assert_eq!(mov.digit, Digit::try_from('7').unwrap());
+    assert_eq!(mov.digit, Digit::try_from('2').unwrap());
 }
 
 #[test]
@@ -146,14 +97,13 @@ fn test_compress_and_gen_moves() {
     assert_eq!(solution_table.len(), 2);
     assert_eq!(solution_table.hash(), 11 ^ 22);
     assert_eq!(solution_table.num_squares(), 2);
-    assert_eq!(solution_table.num_moves_per_square(), [2, 2]);
 
     let mut iter = solution_table.iter();
     let sol = iter.next().unwrap();
     assert_eq!(sol.id(), 11);
     assert_eq!(
         sol.digits(),
-        &['1', '2'].map(|c| Digit::try_from(c).unwrap())
+        &['1', '3'].map(|c| Digit::try_from(c).unwrap())
     );
     let sol = iter.next().unwrap();
     assert_eq!(sol.id(), 22);
@@ -177,11 +127,11 @@ fn test_compress_and_gen_moves() {
     assert_eq!(moves[2].num_solutions, 1);
     assert_eq!(moves[2].hash, 22);
     assert_eq!(moves[3].mov.square, Small::new(1));
-    assert_eq!(moves[3].mov.digit, Digit::try_from('2').unwrap());
+    assert_eq!(moves[3].mov.digit, Digit::try_from('3').unwrap());
     assert_eq!(moves[3].num_solutions, 1);
     assert_eq!(moves[3].hash, 11);
 
     let orig_move = solution_table.original_move(moves[3].mov);
     assert_eq!(orig_move.square, Small::new(20));
-    assert_eq!(orig_move.digit, Digit::try_from('8').unwrap());
+    assert_eq!(orig_move.digit, Digit::try_from('3').unwrap());
 }

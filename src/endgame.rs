@@ -1,5 +1,6 @@
 use crate::{
     board::{FullMove, Move},
+    digit::Digit,
     digit_set::DigitSet,
     error::ResourcesExceeded,
     log, settings,
@@ -302,25 +303,11 @@ impl EndgameSolver {
         move_tables: &[SquareMoveTable],
     ) -> EndgameResult {
         assert_eq!(move_tables.len(), usize::from(solutions.num_squares()));
-        for ((square, &num_moves), move_table) in (0u8..)
-            .zip(solutions.num_moves_per_square().iter())
-            .zip(move_tables.iter())
-        {
-            for (digit, &num_solutions) in (0..num_moves).zip(
-                unsafe {
-                    move_table
-                        .num_solutions
-                        .get_unchecked(..usize::from(num_moves))
-                }
-                .iter(),
-            ) {
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
+            for (digit, &num_solutions) in Digit::all().zip(move_table.num_solutions.iter()) {
                 if num_solutions == 1 {
-                    let digit = unsafe { Small::new_unchecked(digit) }.into();
                     return EndgameResult::Win(Some(EndgameMoveNoHash {
-                        mov: solutions.original_move(Move {
-                            square: unsafe { Small::new_unchecked(square) },
-                            digit,
-                        }),
+                        mov: solutions.original_move(Move { square, digit }),
                         num_solutions,
                     }));
                 }
@@ -328,20 +315,10 @@ impl EndgameSolver {
         }
 
         // Enhanced transposition cutoff.
-        for ((square, &num_moves), move_table) in (0u8..)
-            .zip(solutions.num_moves_per_square().iter())
-            .zip(move_tables.iter())
-        {
-            for ((digit, &num_solutions), &hash) in (0..num_moves)
-                .zip(
-                    unsafe {
-                        move_table
-                            .num_solutions
-                            .get_unchecked(..usize::from(num_moves))
-                    }
-                    .iter(),
-                )
-                .zip(unsafe { move_table.hash.get_unchecked(..usize::from(num_moves)) }.iter())
+        for (square, move_table) in Small::all().zip(move_tables.iter()) {
+            for ((digit, &num_solutions), &hash) in Digit::all()
+                .zip(move_table.num_solutions.iter())
+                .zip(move_table.hash.iter())
             {
                 if num_solutions >= 4
                     && num_solutions < solutions.len()
@@ -350,12 +327,8 @@ impl EndgameSolver {
                         Some(EndgameResult::Loss)
                     )
                 {
-                    let digit = unsafe { Small::new_unchecked(digit) }.into();
                     return EndgameResult::Win(Some(EndgameMoveNoHash {
-                        mov: solutions.original_move(Move {
-                            square: unsafe { Small::new_unchecked(square) },
-                            digit,
-                        }),
+                        mov: solutions.original_move(Move { square, digit }),
                         num_solutions,
                     }));
                 }

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::{
     board::{Board, FullMove, Move},
     endgame::{EndgameResult, EndgameSolver},
-    error::InvalidInput,
+    error::{InvalidInput, ResourcesExceeded},
     log, midgame,
     player::Player,
     random::RandomGenerator,
@@ -30,8 +30,24 @@ impl PlayerMain {
         }
     }
 
-    fn choose_opening_move(&mut self, start_time: Instant) -> Option<Move> {
-        let moves = midgame::generate_moves(&mut self.board, &SolutionTable::empty());
+    fn choose_opening_move(&mut self, start_time: Instant, time_left: Duration) -> Option<Move> {
+        let movegen_deadline =
+            start_time + time_left.mul_f64(settings::OPENING_MOVEGEN_TIME_FRACTION);
+        let (res, solutions) =
+            SolutionTable::generate(&self.board, 2, 2, movegen_deadline, &mut self.rng);
+        match res {
+            Ok(()) => {
+                log::write_line!(Info, "What? Opening all solutions generated.",);
+                return None;
+            }
+            Err(ResourcesExceeded::Memory) => {}
+            Err(e) => {
+                log::write_line!(Info, "opening sol gen error: {e}",);
+                return None;
+            }
+        }
+        let moves = midgame::generate_moves(&mut self.board, &solutions, movegen_deadline);
+        assert!(!moves.is_empty());
         log::write_line!(
             Info,
             "opening movegen time {:.3?}",
@@ -50,7 +66,9 @@ impl PlayerMain {
         mut time_left: Duration,
     ) -> FullMove {
         assert!(self.solutions.len() >= settings::SOLUTIONS_MIN);
-        let mut moves = midgame::generate_moves(&mut self.board, &self.solutions);
+        let movegen_deadline =
+            start_time + time_left.mul_f64(settings::MIDGAME_MOVEGEN_TIME_FRACTION);
+        let mut moves = midgame::generate_moves(&mut self.board, &self.solutions, movegen_deadline);
         let num_moves = moves.len();
         assert!(!moves.is_empty());
         moves.sort_by_key(|x| x.num_solutions_lower_bound);
@@ -103,8 +121,12 @@ impl PlayerMain {
                     Ok(EndgameResult::Loss) => {
                         self.solutions = solutions;
                         self.all_solutions_generated = true;
-                        log::write_line!(Info, "win!");
-                        return FullMove::Move(mov.mov);
+                        log::write_line!(Info, "midgame win!");
+                        return if self.solutions.len() == 1 {
+                            FullMove::MoveClaimUnique(mov.mov)
+                        } else {
+                            FullMove::Move(mov.mov)
+                        };
                     }
                     Ok(EndgameResult::Win(maybe_move)) => {
                         log::write_line!(Info, "midgame PANIC");
@@ -161,8 +183,10 @@ impl Player for PlayerMain {
     }
 
     fn choose_move(&mut self, mut start_time: Instant, mut time_left: Duration) -> FullMove {
-        if 81 - self.board.empty_squares().size() <= settings::OPENING_MAX_SQUARES {
-            if let Some(mov) = self.choose_opening_move(start_time) {
+        if !self.all_solutions_generated
+            && 81 - self.board.empty_squares().size() <= settings::OPENING_MAX_SQUARES
+        {
+            if let Some(mov) = self.choose_opening_move(start_time, time_left) {
                 self.board.make_move(mov).unwrap();
                 return FullMove::Move(mov);
             }

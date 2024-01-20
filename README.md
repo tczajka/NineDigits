@@ -17,4 +17,4 @@ CodeCup is an annual AI competition.
 
 # Algorithms
 
-An overview of the algorithms used by the engine is [here](algorithms).
+An overview of the algorithms used by the engine is [here](algorithms.md).

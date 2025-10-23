@@ -11,7 +11,7 @@ Two players alternate placing digits on an initially empty [Sudoku](https://en.w
 
 # CodeCup 2024
 
-NineDigits won [CodeCup 2024](https://www.codecup.nl/)!
+NineDigits won [CodeCup 2024]([https://www.codecup.nl/](https://archive.codecup.nl/2024/))!
 
 CodeCup is an annual AI competition.
 
